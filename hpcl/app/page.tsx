@@ -103,6 +103,7 @@ export default function Home() {
   const [filteredLeads, setFilteredLeads] = useState<Lead[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [urgencyFilter, setUrgencyFilter] = useState<string>('all')
+  const [stateFilter, setStateFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -154,8 +155,14 @@ export default function Home() {
       filtered = filtered.filter((lead) => lead.urgency === urgencyFilter)
     }
 
+    if (stateFilter !== 'all') {
+      filtered = filtered.filter(
+        (lead) => (lead.location.state || '').toLowerCase() === stateFilter.toLowerCase()
+      )
+    }
+
     setFilteredLeads(filtered.sort((a, b) => b.lead_score - a.lead_score))
-  }, [searchQuery, urgencyFilter, leads])
+  }, [searchQuery, urgencyFilter, stateFilter, leads])
 
   // Handle status change
   const handleStatusChange = (leadId: string, status: string, notes: string) => {
@@ -336,6 +343,20 @@ export default function Home() {
                   <option value="High">High</option>
                   <option value="Medium">Medium</option>
                   <option value="Low">Low</option>
+                </select>
+                <select
+                  value={stateFilter}
+                  onChange={(e) => setStateFilter(e.target.value)}
+                  className="h-10 px-3 border border-border rounded-lg bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <option value="all">All States</option>
+                  {Array.from(new Set(leads.map((l) => (l.location.state || '').trim()).filter(Boolean)))
+                    .sort((a, b) => a.localeCompare(b))
+                    .map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
                 </select>
                 <Button
                   variant="outline"
