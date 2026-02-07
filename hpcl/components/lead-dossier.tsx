@@ -26,6 +26,13 @@ import {
   FileText,
 } from 'lucide-react'
 import { useState } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 interface Lead {
   id: string
@@ -79,6 +86,11 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
   const [status, setStatus] = useState(lead.status)
   const [notes, setNotes] = useState(lead.notes)
   const [isSaving, setIsSaving] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailResult, setEmailResult] = useState<string | null>(null)
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -86,6 +98,33 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
       onStatusChange(lead.id, status, notes)
       setIsSaving(false)
     }, 500)
+  }
+
+  const handleSendEmail = async () => {
+    setEmailSending(true)
+    setEmailResult(null)
+    try {
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '')
+      const res = await fetch(`${apiBase}/api/email/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailTo,
+          subject: `HPCL Opportunity: ${lead.company_name}`,
+          message: emailMessage,
+          lead,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || `Send failed: ${res.status}`)
+      }
+      setEmailResult('Email sent successfully.')
+    } catch (err) {
+      setEmailResult(`Failed to send: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setEmailSending(false)
+    }
   }
 
   const urgencyColor = {
@@ -307,7 +346,13 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           <Phone className="w-4 h-4" />
           <span className="hidden sm:inline">Call</span>
         </Button>
-        <Button className="h-11 bg-accent hover:bg-accent/90 text-accent-foreground font-medium flex items-center justify-center gap-2">
+        <Button
+          onClick={() => {
+            setEmailOpen(true)
+            setEmailResult(null)
+          }}
+          className="h-11 bg-accent hover:bg-accent/90 text-accent-foreground font-medium flex items-center justify-center gap-2"
+        >
           <Mail className="w-4 h-4" />
           <span className="hidden sm:inline">Email</span>
         </Button>
@@ -320,6 +365,48 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           <span className="hidden sm:inline">Maps</span>
         </Button>
       </div>
+
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send Email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">To</label>
+              <Input
+                value={emailTo}
+                onChange={(e) => setEmailTo(e.target.value)}
+                placeholder="customer@example.com"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">Message</label>
+              <Textarea
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                placeholder="Write your email…"
+                className="min-h-28"
+              />
+            </div>
+            {emailResult && (
+              <p className="text-xs text-muted-foreground break-words">{emailResult}</p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setEmailOpen(false)}
+                disabled={emailSending}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSendEmail} disabled={emailSending || !emailTo.trim()}>
+                {emailSending ? 'Sending…' : 'Send'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* F. Lead Status & Notes */}
       <Card className="border-border">

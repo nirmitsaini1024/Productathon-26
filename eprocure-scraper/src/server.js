@@ -7,6 +7,7 @@ import { extractStateNameFromSiteLocation, lookupStateByName, STATES } from "./s
 import { searchTender247 } from "./t247-client.js";
 import { KEYWORDS } from "./keywords.js";
 import { TENDER247_KEYWORDS } from "./tender247_keywords.js";
+import { sendLeadEmail } from "./email.js";
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -648,6 +649,44 @@ app.get("/api/t247/tenders", async (req, res) => {
     return res.json({ ok: true, total, page, limit, items });
   } catch (err) {
     return res.status(500).json({ error: err?.message ?? String(err) });
+  }
+});
+
+app.post("/api/email/send", async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== "object") {
+      return res.status(400).json({ error: "Missing JSON body" });
+    }
+
+    const to = body.to;
+    const subject = body.subject;
+    const message = body.message;
+    const lead = body.lead;
+
+    const out = await sendLeadEmail({ to, subject, message, lead });
+    const emailId = out?.data?.id ?? null;
+
+    if (!emailId) {
+      const ts = new Date().toISOString();
+      const errMsg = out?.error?.message ?? "Unknown error from Resend (no id returned)";
+      console.error(
+        `[email] failed ts=${ts} to=${String(to ?? "")} subject=${String(subject ?? "")} error=${String(errMsg)}`
+      );
+      return res.status(502).json({ ok: false, error: String(errMsg) });
+    }
+
+    const ts = new Date().toISOString();
+    console.log(
+      `[email] sent ts=${ts} to=${String(to ?? "")} subject=${String(subject ?? "")} id=${String(emailId)}`
+    );
+
+    return res.json({ ok: true, id: emailId });
+  } catch (err) {
+    const ts = new Date().toISOString();
+    const to = req?.body?.to;
+    console.error(`[email] failed ts=${ts} to=${String(to ?? "")} error=${err?.message ?? String(err)}`);
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
   }
 });
 
