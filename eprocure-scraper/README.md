@@ -220,6 +220,50 @@ The detail URLs contain session tokens that expire. The scraper maintains the sa
 | `RESET` | 0 | Set to `1` to clear existing results and start fresh |
 | `SKIP_DETAILS` | 0 | Set to `1` to skip detail page scraping |
 | `DOWNLOAD_DOCS` | 0 | Set to `1` to download all PDF/Excel documents |
+| `MONGO_URI` | - | MongoDB connection string. If set, scraped tenders are upserted into MongoDB |
+| `MONGO_DB` | (from URI) | Override database name (optional) |
+| `MONGO_COLLECTION` | `tenders` | Base collection name |
+| `MONGO_MODE` | `single` | `single` stores all tenders in one collection with a `keywords[]` array. `per_keyword` stores each keyword into a separate collection |
+| `MONGO_RESET` | 0 | If `1` and `RESET=1`, clears the target collection(s) before scraping |
+| `MONGO_STRICT` | 1 | If `0`, Mongo write errors are logged but won’t fail the run |
+| `MONGO_INSERT_ONLY` | 0 | If `1`, only inserts new tenders (never updates existing records) |
+
+### MongoDB Storage (recommended)
+
+This project loads environment variables from a local `.env` file (via `dotenv`). Create it by copying `env.example` to `.env` in the `eprocure-scraper/` folder.
+
+Default (recommended): **one collection** (e.g. `tenders`) with a **unique key** and a `keywords` array, so the same tender matched by multiple keywords is stored once:
+
+```bash
+MONGO_URI="mongodb://localhost:27017/eprocure" node src/index.js "diesel" "bitumen"
+```
+
+If you truly want **one collection per keyword**:
+
+```bash
+MONGO_URI="mongodb://localhost:27017/eprocure" MONGO_MODE=per_keyword node src/index.js "diesel" "bitumen"
+```
+
+## Backend API Server (for HPCL UI)
+
+The scraper project also includes a small API server that reads from MongoDB and exposes leads for the UI.
+
+### Run the API
+
+```bash
+PORT=4000 npm run api
+```
+
+### Endpoints
+
+- `GET /health`
+- `GET /api/leads?limit=200` → returns `{ leads, dashboard_metrics }`
+
+### CORS
+
+Optionally restrict browser access with:
+
+- `CORS_ORIGINS="http://localhost:3000,https://your-ui-domain"`
 
 ## Troubleshooting
 

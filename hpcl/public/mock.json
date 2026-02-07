@@ -1,0 +1,474 @@
+{
+  "leads": [
+    {
+      "id": "LEAD-001",
+      "company_name": "Brahmaputra Petrochemicals Ltd",
+      "location": {
+        "city": "Assam",
+        "state": "Assam",
+        "region": "East"
+      },
+      "industry": "Petrochemicals",
+      "website": "https://www.brahmaputrapetro.com",
+      "company_size": "Large (2000+ employees)",
+      "lead_score": 92,
+      "lead_score_reason": "High-intent petrochemical expansion signals",
+      "urgency": "High",
+      "confidence": 92,
+      "signals": [
+        {
+          "type": "Tender",
+          "keyword": "Boiler Oil & Furnace Oil supply",
+          "source": "https://eprocure.gov.in",
+          "date": "2025-02-01",
+          "trust_score": 95,
+          "summary": "Issued tender for 500 MT annual supply of Boiler Oil ISO VG 40"
+        },
+        {
+          "type": "Website",
+          "keyword": "Capacity expansion 2025",
+          "source": "brahmaputrapetro.com",
+          "date": "2025-01-28",
+          "trust_score": 88,
+          "summary": "Announced new production facility requiring 200 MT fuel monthly"
+        },
+        {
+          "type": "News",
+          "keyword": "Plant commissioning",
+          "source": "Business Today",
+          "date": "2025-01-20",
+          "trust_score": 90,
+          "summary": "New petrochemical facility opening Q1 2025 in Assam"
+        }
+      ],
+      "products_recommended": [
+        {
+          "product_name": "Industrial Boiler Oil ISO VG 40",
+          "confidence": 94,
+          "reason_code": "Matched tender requirement + website capacity signal",
+          "estimated_volume": "500 MT/year",
+          "margin_potential": "High"
+        },
+        {
+          "product_name": "Furnace Oil HSD Grade",
+          "confidence": 87,
+          "reason_code": "Petrochemical process heat requirement",
+          "estimated_volume": "300 MT/year",
+          "margin_potential": "High"
+        },
+        {
+          "product_name": "Thermal Oil Specialist Grade",
+          "confidence": 76,
+          "reason_code": "Heat transfer medium for expansion project",
+          "estimated_volume": "150 MT/year",
+          "margin_potential": "Medium"
+        }
+      ],
+      "next_actions": {
+        "suggested_action": "Call + Email",
+        "timing": "Within 3 days (tender deadline approaching)",
+        "context": "Tender closes Feb 7. Reference facility expansion. Pitch volume discount for annual contract.",
+        "contact_trigger": "Tender response, capacity planning"
+      },
+      "sales_owner": "Raj Kumar (Regional Manager, East)",
+      "field_officer": "Suresh Patel",
+      "status": "new",
+      "notes": "",
+      "created_at": "2025-02-04"
+    },
+    {
+      "id": "LEAD-002",
+      "company_name": "DLF Logistics & Transport",
+      "location": {
+        "city": "Gurgaon",
+        "state": "Haryana",
+        "region": "North"
+      },
+      "industry": "Logistics & Transportation",
+      "website": "https://www.dlflogistics.com",
+      "company_size": "Large (1500+ employees)",
+      "lead_score": 78,
+      "lead_score_reason": "Fleet expansion signals + bulk fueling requirement",
+      "urgency": "Medium",
+      "confidence": 78,
+      "signals": [
+        {
+          "type": "News",
+          "keyword": "Fleet expansion 300 vehicles",
+          "source": "Times of India",
+          "date": "2025-02-02",
+          "trust_score": 89,
+          "summary": "DLF Logistics expanding fleet by 300 trucks across India"
+        },
+        {
+          "type": "Tender",
+          "keyword": "HSD fuel supply contract",
+          "source": "https://eprocure.gov.in",
+          "date": "2025-01-30",
+          "trust_score": 92,
+          "summary": "RFQ for 2000 MT monthly HSD bulk supply"
+        },
+        {
+          "type": "Website",
+          "keyword": "Fuel card partnerships",
+          "source": "dlflogistics.com",
+          "date": "2025-02-01",
+          "trust_score": 72,
+          "summary": "Seeking reliable bulk fuel suppliers for nationwide coverage"
+        }
+      ],
+      "products_recommended": [
+        {
+          "product_name": "HSD (High Speed Diesel) Bulk Supply",
+          "confidence": 96,
+          "reason_code": "Tender volume 2000 MT/month + fleet expansion",
+          "estimated_volume": "2000 MT/month",
+          "margin_potential": "High"
+        },
+        {
+          "product_name": "Fuel Management Services",
+          "confidence": 82,
+          "reason_code": "Large fleet optimization opportunity",
+          "estimated_volume": "Contract-based",
+          "margin_potential": "Medium"
+        },
+        {
+          "product_name": "Lubricant Specialty Oils",
+          "confidence": 68,
+          "reason_code": "Ancillary vehicle maintenance requirement",
+          "estimated_volume": "50 MT/month",
+          "margin_potential": "Low-Medium"
+        }
+      ],
+      "next_actions": {
+        "suggested_action": "Email + Call",
+        "timing": "Within 2 days (high competition)",
+        "context": "Tender closes Feb 6. Fleet expansion creates urgent need. Propose volume-based pricing + bulk delivery infrastructure.",
+        "contact_trigger": "Tender RFQ, competitive win opportunity"
+      },
+      "sales_owner": "Priya Sharma (Regional Manager, North)",
+      "field_officer": "Amit Singh",
+      "status": "new",
+      "notes": "",
+      "created_at": "2025-02-03"
+    },
+    {
+      "id": "LEAD-003",
+      "company_name": "Tata Steel Jamshedpur",
+      "location": {
+        "city": "Jamshedpur",
+        "state": "Jharkhand",
+        "region": "East"
+      },
+      "industry": "Steel Manufacturing",
+      "website": "https://www.tatasteel.com",
+      "company_size": "Large (50000+ employees)",
+      "lead_score": 88,
+      "lead_score_reason": "Furnace oil requirement + capacity utilization signals",
+      "urgency": "High",
+      "confidence": 88,
+      "signals": [
+        {
+          "type": "Tender",
+          "keyword": "Furnace Oil supply 5000 MT quarterly",
+          "source": "https://tatasteel.eproc.in",
+          "date": "2025-02-01",
+          "trust_score": 96,
+          "summary": "RFQ for Furnace Oil supply for blast furnace operations"
+        },
+        {
+          "type": "News",
+          "keyword": "Production capacity increased 15%",
+          "source": "Economic Times",
+          "date": "2025-01-25",
+          "trust_score": 93,
+          "summary": "Tata Steel increases Jamshedpur capacity, raising fuel demand"
+        },
+        {
+          "type": "Website",
+          "keyword": "Supplier performance metrics",
+          "source": "tatasteel.com",
+          "date": "2025-02-01",
+          "trust_score": 85,
+          "summary": "Seeking suppliers with ISO 9001 & environmental compliance"
+        }
+      ],
+      "products_recommended": [
+        {
+          "product_name": "Industrial Furnace Oil (Bunker Grade)",
+          "confidence": 98,
+          "reason_code": "Direct tender RFQ + 15% capacity increase signal",
+          "estimated_volume": "5000 MT/quarter",
+          "margin_potential": "High"
+        },
+        {
+          "product_name": "Boiler Oil Specialist Grade",
+          "confidence": 74,
+          "reason_code": "Supporting blast furnace auxiliary operations",
+          "estimated_volume": "800 MT/quarter",
+          "margin_potential": "Medium"
+        }
+      ],
+      "next_actions": {
+        "suggested_action": "Call + Meeting",
+        "timing": "Immediately (high-value, established buyer)",
+        "context": "Tender closes Feb 8. Tata Steel is tier-1 buyer. Emphasize supply reliability, compliance certifications, and volume discounts.",
+        "contact_trigger": "Tender RFQ, capacity increase event"
+      },
+      "sales_owner": "Vikram Rao (Regional Manager, East)",
+      "field_officer": "Suresh Patel",
+      "status": "new",
+      "notes": "",
+      "created_at": "2025-02-02"
+    },
+    {
+      "id": "LEAD-004",
+      "company_name": "Birlasoft & IT Campuses",
+      "location": {
+        "city": "Pune",
+        "state": "Maharashtra",
+        "region": "West"
+      },
+      "industry": "IT Services & Facilities",
+      "website": "https://www.birlasoft.com",
+      "company_size": "Large (10000+ employees)",
+      "lead_score": 62,
+      "lead_score_reason": "Facility expansion + diesel generator fuel requirement",
+      "urgency": "Medium",
+      "confidence": 62,
+      "signals": [
+        {
+          "type": "Website",
+          "keyword": "Campus expansion Pune facility",
+          "source": "birlasoft.com",
+          "date": "2025-01-28",
+          "trust_score": 75,
+          "summary": "New office campus coming Q2 2025 with backup power infrastructure"
+        },
+        {
+          "type": "News",
+          "keyword": "Employee growth 200 new positions",
+          "source": "Business India",
+          "date": "2025-01-20",
+          "trust_score": 68,
+          "summary": "Campus expansion to support 200 new IT employees"
+        }
+      ],
+      "products_recommended": [
+        {
+          "product_name": "Diesel for Generators (DG Set Fuel)",
+          "confidence": 78,
+          "reason_code": "New campus backup power requirement",
+          "estimated_volume": "500 MT/year",
+          "margin_potential": "Medium"
+        },
+        {
+          "product_name": "Industrial Boiler Oil",
+          "confidence": 45,
+          "reason_code": "HVAC/process heating (speculative)",
+          "estimated_volume": "200 MT/year",
+          "margin_potential": "Low"
+        }
+      ],
+      "next_actions": {
+        "suggested_action": "Email",
+        "timing": "Within 1 week (pre-construction phase)",
+        "context": "Campus opens Q2. Early engagement for supplier selection. Offer campus-wide fuel solutions package.",
+        "contact_trigger": "Campus expansion event, new facility planning"
+      },
+      "sales_owner": "Deepak Prabhu (Regional Manager, West)",
+      "field_officer": "Jayant Desai",
+      "status": "new",
+      "notes": "",
+      "created_at": "2025-02-01"
+    },
+    {
+      "id": "LEAD-005",
+      "company_name": "NTPC Ramagundam Power Station",
+      "location": {
+        "city": "Hyderabad",
+        "state": "Telangana",
+        "region": "South"
+      },
+      "industry": "Power Generation",
+      "website": "https://www.ntpc.co.in",
+      "company_size": "Government Enterprise",
+      "lead_score": 95,
+      "lead_score_reason": "Highest priority: PSU buyer, fuel-critical operations",
+      "urgency": "High",
+      "confidence": 95,
+      "signals": [
+        {
+          "type": "Tender",
+          "keyword": "Heavy Fuel Oil supply 10000 MT quarterly",
+          "source": "https://ntpc.eproc.in",
+          "date": "2025-02-03",
+          "trust_score": 99,
+          "summary": "Government tender for HFO supply for power generation"
+        },
+        {
+          "type": "News",
+          "keyword": "Plant refurbishment & efficiency upgrade",
+          "source": "Ministry of Power Website",
+          "date": "2025-01-15",
+          "trust_score": 96,
+          "summary": "NTPC modernization program underway, fuel quality requirements increased"
+        }
+      ],
+      "products_recommended": [
+        {
+          "product_name": "Heavy Fuel Oil (Power Gen Grade)",
+          "confidence": 99,
+          "reason_code": "Direct government tender RFQ, power plant fuel requirement",
+          "estimated_volume": "10000 MT/quarter",
+          "margin_potential": "High"
+        },
+        {
+          "product_name": "Furnace Oil Specification Grade",
+          "confidence": 85,
+          "reason_code": "Auxiliary boiler & process heat requirement",
+          "estimated_volume": "2000 MT/quarter",
+          "margin_potential": "Medium"
+        }
+      ],
+      "next_actions": {
+        "suggested_action": "Call + Bid Meeting",
+        "timing": "Immediately (government PSU, time-critical)",
+        "context": "Tender closes Feb 10. PSU buyer = highest priority. Emphasize quality compliance, supply chain reliability, govt registration.",
+        "contact_trigger": "Government tender, PSU priority lead"
+      },
+      "sales_owner": "Rajesh Gupta (Regional Manager, South)",
+      "field_officer": "Prakash Reddy",
+      "status": "new",
+      "notes": "",
+      "created_at": "2025-02-04"
+    }
+  ],
+  "products": [
+    {
+      "id": "PROD-001",
+      "name": "Industrial Boiler Oil ISO VG 40",
+      "category": "Fuel - Specialty",
+      "margin_tier": "High",
+      "description": "Premium boiler oil for industrial combustion"
+    },
+    {
+      "id": "PROD-002",
+      "name": "Furnace Oil HSD Grade",
+      "category": "Fuel - Specialty",
+      "margin_tier": "High",
+      "description": "Furnace oil for process heat applications"
+    },
+    {
+      "id": "PROD-003",
+      "name": "HSD (High Speed Diesel) Bulk Supply",
+      "category": "Fuel - Transportation",
+      "margin_tier": "High",
+      "description": "Bulk diesel for fleet & transport operations"
+    },
+    {
+      "id": "PROD-004",
+      "name": "Heavy Fuel Oil (Power Gen Grade)",
+      "category": "Fuel - Power Generation",
+      "margin_tier": "High",
+      "description": "HFO for power generation plants"
+    },
+    {
+      "id": "PROD-005",
+      "name": "Thermal Oil Specialist Grade",
+      "category": "Fuel - Specialty",
+      "margin_tier": "Medium",
+      "description": "Heat transfer medium for industrial processes"
+    },
+    {
+      "id": "PROD-006",
+      "name": "Diesel for Generators (DG Set Fuel)",
+      "category": "Fuel - Backup Power",
+      "margin_tier": "Medium",
+      "description": "Specialized diesel for generator sets"
+    },
+    {
+      "id": "PROD-007",
+      "name": "Fuel Management Services",
+      "category": "Services - Supply Chain",
+      "margin_tier": "Medium",
+      "description": "End-to-end fuel procurement & logistics"
+    },
+    {
+      "id": "PROD-008",
+      "name": "Lubricant Specialty Oils",
+      "category": "Lubricants",
+      "margin_tier": "Low-Medium",
+      "description": "Industrial-grade lubricants for machinery"
+    }
+  ],
+  "dashboard_metrics": {
+    "this_week": {
+      "leads_discovered": 5,
+      "leads_contacted": 2,
+      "leads_accepted": 1,
+      "leads_converted": 0,
+      "conversion_rate": "50%",
+      "avg_lead_score": 83
+    },
+    "this_month": {
+      "leads_discovered": 18,
+      "leads_contacted": 12,
+      "leads_accepted": 5,
+      "leads_converted": 2,
+      "conversion_rate": "16.7%",
+      "estimated_revenue": "₹2.4 Cr"
+    },
+    "by_product": [
+      {
+        "product": "HSD Bulk Supply",
+        "demand_count": 4,
+        "conversion_rate": "50%"
+      },
+      {
+        "product": "Furnace Oil",
+        "demand_count": 3,
+        "conversion_rate": "33%"
+      },
+      {
+        "product": "Heavy Fuel Oil",
+        "demand_count": 2,
+        "conversion_rate": "100%"
+      }
+    ],
+    "by_sector": [
+      {
+        "sector": "Petrochemicals",
+        "count": 3,
+        "avg_score": 85
+      },
+      {
+        "sector": "Logistics & Transport",
+        "count": 2,
+        "avg_score": 72
+      },
+      {
+        "sector": "Power Generation",
+        "count": 2,
+        "avg_score": 91
+      }
+    ],
+    "by_region": [
+      {
+        "region": "East",
+        "count": 3,
+        "conversion_rate": "40%"
+      },
+      {
+        "region": "North",
+        "count": 1,
+        "conversion_rate": "20%"
+      },
+      {
+        "region": "West",
+        "count": 1,
+        "conversion_rate": "50%"
+      }
+    ]
+  }
+}

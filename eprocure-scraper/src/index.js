@@ -1,7 +1,9 @@
+import "dotenv/config";
 import fs from "fs";
 import pLimit from "p-limit";
 import { KEYWORDS } from "./keywords.js";
 import { scrapeKeyword } from "./scraper.js";
+import { closeMongo, isMongoEnabled, mongoResetForKeywords, persistTenders } from "./mongo.js";
 import { jitter, safeFilename, sleep } from "./utils.js";
 
 const limit = pLimit(1); // serial scraping (gov-site friendly)
@@ -44,6 +46,9 @@ function mergeUnique(existing, incoming) {
 
 async function run() {
   const reset = process.env.RESET === "1";
+  const mongoEnabled = isMongoEnabled();
+  const mongoStrict = process.env.MONGO_STRICT !== "0";
+  const mongoReset = process.env.MONGO_RESET === "1";
 
   // Start with previous combined results unless RESET=1
   const results = reset ? [] : readJsonArrayIfExists("output/tenders.json");
@@ -64,36 +69,65 @@ async function run() {
   const scrapeDetails = process.env.SKIP_DETAILS !== "1"; // Allow skipping detail scraping via env var
   const downloadDocuments = process.env.DOWNLOAD_DOCS === "1"; // Enable document downloads via env var
 
+  if (mongoEnabled) {
+    console.log("MongoDB enabled (MONGO_URI set)");
+    if (reset && mongoReset) {
+      console.log("MongoDB reset enabled (MONGO_RESET=1) and RESET=1 — clearing target collection(s)...");
+      await mongoResetForKeywords(keywords);
+      console.log("MongoDB collections cleared");
+    }
+  }
+
   for (const keyword of keywords) {
     await limit(async () => {
-      console.log(`Searching: ${keyword}${scrapeDetails ? ' (with details)' : ''}${downloadDocuments ? ' + docs' : ''}`);
+      console.log(
+        `Searching: ${keyword}${scrapeDetails ? " (with details)" : ""}${downloadDocuments ? " + docs" : ""}`
+      );
 
       try {
-        // Pass scrapeDetails and downloadDocuments options to scrapeKeyword to fetch details in same session
-        const tenders = await scrapeKeyword(keyword, { 
-          scrapeDetails, 
+        // Fetch details in the same session (detail URLs are session-bound)
+        const tenders = await scrapeKeyword(keyword, {
+          scrapeDetails,
           downloadDocuments,
-          outputDir: "output"
+          outputDir: "output",
         });
         console.log(`  Found ${tenders.length} rows`);
-        
-        // Count how many have detail fields
+
+        // Count enrichment
         if (scrapeDetails) {
-          const tendersWithDetails = tenders.filter(t => 
-            Object.keys(t).some(k => !['keyword', 'publishedDate', 'closingDate', 'openingDate', 'title', 'reference', 'organisation', 'detailUrl'].includes(k))
-          );
+          const baseKeys = new Set([
+            "keyword",
+            "publishedDate",
+            "closingDate",
+            "openingDate",
+            "title",
+            "reference",
+            "organisation",
+            "detailUrl",
+          ]);
+          const tendersWithDetails = tenders.filter((t) => Object.keys(t).some((k) => !baseKeys.has(k)));
           console.log(`  Enriched ${tendersWithDetails.length}/${tenders.length} with detail data`);
-          
-          // Count documents downloaded
+
           if (downloadDocuments) {
             const totalDocs = tenders.reduce((sum, t) => {
-              const nitDocs = t.nitDocuments?.filter(d => d.localPath)?.length || 0;
-              const workDocs = t.workItemDocuments?.filter(d => d.localPath)?.length || 0;
+              const nitDocs = t.nitDocuments?.filter((d) => d.localPath)?.length || 0;
+              const workDocs = t.workItemDocuments?.filter((d) => d.localPath)?.length || 0;
               return sum + nitDocs + workDocs;
             }, 0);
-            if (totalDocs > 0) {
-              console.log(`  Downloaded ${totalDocs} documents`);
+            if (totalDocs > 0) console.log(`  Downloaded ${totalDocs} documents`);
+          }
+        }
+
+        // Persist to Mongo
+        if (mongoEnabled) {
+          try {
+            const res = await persistTenders({ keyword, tenders });
+            if (res?.ok) {
+              console.log(`  MongoDB: upserted=${res.upserted} modified=${res.modified} (${res.collection})`);
             }
+          } catch (err) {
+            console.error(`  MongoDB write failed: ${err?.message ?? err}`);
+            if (mongoStrict) throw err;
           }
         }
 
@@ -102,7 +136,7 @@ async function run() {
         const perPath = `output/by-keyword/${fname}`;
         const existingPer = reset ? [] : readJsonArrayIfExists(perPath);
         const mergedPer = mergeUnique(existingPer, tenders);
-        
+
         // Only store if there's data
         if (mergedPer.length > 0) {
           byKeyword.set(keyword, { path: perPath, tenders: mergedPer });
@@ -117,11 +151,12 @@ async function run() {
         }
       } catch (err) {
         console.error(`Failed for keyword "${keyword}": ${err?.message ?? err}`);
+
         // Still ensure a stable per-keyword file exists (keep existing unless RESET=1)
         const fname = safeFilename(keyword) + ".json";
         const perPath = `output/by-keyword/${fname}`;
         const existingPer = reset ? [] : readJsonArrayIfExists(perPath);
-        
+
         // Only store if there's existing data
         if (!byKeyword.has(keyword) && existingPer.length > 0) {
           byKeyword.set(keyword, { path: perPath, tenders: existingPer });
@@ -140,11 +175,7 @@ async function run() {
   let savedKeywordFiles = 0;
   for (const [, payload] of byKeyword.entries()) {
     if (payload.tenders.length > 0) {
-      fs.writeFileSync(
-        payload.path,
-        JSON.stringify(payload.tenders, null, 2),
-        "utf-8"
-      );
+      fs.writeFileSync(payload.path, JSON.stringify(payload.tenders, null, 2), "utf-8");
       savedKeywordFiles++;
     }
   }
@@ -158,8 +189,12 @@ async function run() {
   } else {
     console.log("No tenders found - output/tenders.json not created");
   }
-  
+
   console.log(`Saved ${savedKeywordFiles} keyword files with data`);
+
+  if (mongoEnabled) {
+    await closeMongo();
+  }
 }
 
 run();

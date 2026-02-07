@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    /* HPCL Enterprise Color System - Industrial, Trustworthy, Energy-Sector */
+    /* Background & Neutral */
+    --background: 50 8% 96%;           /* Off-white #F6F7F5 */
+    --foreground: 210 12% 12%;         /* Charcoal #1F2933 */
+    --card: 0 0% 100%;                 /* White #FFFFFF */
+    --card-foreground: 210 12% 12%;    /* Charcoal */
+    --popover: 0 0% 100%;              /* White */
+    --popover-foreground: 210 12% 12%; /* Charcoal */
+    
+    /* Primary - Navy Blue (Main CTA, Headers) */
+    --primary: 219 43% 20%;            /* Navy #1E3A5F */
+    --primary-foreground: 0 0% 98%;    /* Near White */
+    
+    /* Secondary - Warm Gray (Neutral Actions) */
+    --secondary: 40 8% 85%;            /* Warm Gray #D8D5CF */
+    --secondary-foreground: 210 12% 12%; /* Charcoal */
+    
+    /* Muted - Light Gray (Disabled, Subtle) */
+    --muted: 210 8% 90%;               /* Light Gray #E2E8F0 */
+    --muted-foreground: 210 8% 50%;    /* Medium Gray */
+    
+    /* Accent - Teal (Links, Secondary Actions) */
+    --accent: 174 63% 34%;             /* Teal #1B8A8A */
+    --accent-foreground: 0 0% 98%;     /* Near White */
+    
+    /* Destructive - Coral (Alerts, Urgency) */
+    --destructive: 10 75% 53%;         /* Coral #C05621 */
+    --destructive-foreground: 0 0% 98%;/* Near White */
+    
+    /* Borders & Inputs */
+    --border: 210 12% 88%;             /* Light Border #E2E8F0 */
+    --input: 210 12% 94%;              /* Input Gray #F0F4F8 */
+    --ring: 219 43% 20%;               /* Navy (Focus) */
+    
+    /* Chart Colors - Forest Green, Teal, Warm Accents */
+    --chart-1: 134 52% 33%;            /* Forest Green #0F6B3C */
+    --chart-2: 174 63% 34%;            /* Teal #1B8A8A */
+    --chart-3: 39 89% 46%;             /* Golden Yellow #FFA500 */
+    --chart-4: 10 75% 53%;             /* Coral #C05621 */
+    --chart-5: 220 50% 40%;            /* Navy Dark #2D5A8C */
+    
+    --radius: 0.5rem;
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 210 12% 12%;
+    --sidebar-primary: 219 43% 20%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 174 63% 34%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 210 12% 88%;
+    --sidebar-ring: 219 43% 20%;
+  }
+  .dark {
+    /* Dark mode - maintains industrial feel */
+    --background: 210 12% 12%;         /* Charcoal */
+    --foreground: 50 8% 96%;           /* Off-white */
+    --card: 220 20% 18%;               /* Dark Navy #1C2B3F */
+    --card-foreground: 50 8% 96%;      /* Off-white */
+    --popover: 220 20% 18%;
+    --popover-foreground: 50 8% 96%;
+    --primary: 219 43% 35%;            /* Light Navy */
+    --primary-foreground: 210 12% 12%; /* Charcoal */
+    --secondary: 210 10% 30%;          /* Dark Gray */
+    --secondary-foreground: 50 8% 96%; /* Off-white */
+    --muted: 210 10% 25%;              /* Darker Muted */
+    --muted-foreground: 210 8% 65%;    /* Lighter Gray Text */
+    --accent: 174 63% 50%;             /* Lighter Teal */
+    --accent-foreground: 210 12% 12%;  /* Charcoal */
+    --destructive: 10 75% 60%;         /* Lighter Coral */
+    --destructive-foreground: 210 12% 12%;
+    --border: 210 12% 22%;
+    --input: 210 12% 18%;
+    --ring: 174 63% 50%;
+    --chart-1: 134 52% 50%;
+    --chart-2: 174 63% 50%;
+    --chart-3: 39 89% 60%;
+    --chart-4: 10 75% 65%;
+    --chart-5: 220 50% 55%;
+    --sidebar-background: 210 12% 12%;
+    --sidebar-foreground: 50 8% 96%;
+    --sidebar-primary: 219 43% 35%;
+    --sidebar-primary-foreground: 210 12% 12%;
+    --sidebar-accent: 174 63% 50%;
+    --sidebar-accent-foreground: 210 12% 12%;
+    --sidebar-border: 210 12% 22%;
+    --sidebar-ring: 174 63% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
