@@ -75,5 +75,61 @@ export const TENDER247_KEYWORDS = [
         "industry_id": 11,
         "sub_industry_id": 148,
         "keyword_name": "Furnaces"
+    },
+    {
+        "keyword_id": 21423,
+        "product_id": 1235,
+        "industry_id": 33,
+        "sub_industry_id": 257,
+        "keyword_name": "Bunker"
+    },
+    {
+        "keyword_id": 19013,
+        "product_id": 1031,
+        "industry_id": 53,
+        "sub_industry_id": 163,
+        "keyword_name": "Naphtha"
+    },
+    {
+        "keyword_id": 20691,
+        "product_id": 3956,
+        "industry_id": 41,
+        "sub_industry_id": 327,
+        "keyword_name": "Toluene"
+    },
+    {
+        "keyword_id": 26084,
+        "product_id": 288,
+        "industry_id": 11,
+        "sub_industry_id": 148,
+        "keyword_name": "Boiler"
+    },
+    {
+        "keyword_id": 16611,
+        "product_id": 288,
+        "industry_id": 11,
+        "sub_industry_id": 148,
+        "keyword_name": "Boilers"
+    },
+    {
+        "keyword_id": 26036,
+        "product_id": 1050,
+        "industry_id": 32,
+        "sub_industry_id": 324,
+        "keyword_name": "DG Set"
+    },
+    {
+        "keyword_id": 19351,
+        "product_id": 1050,
+        "industry_id": 32,
+        "sub_industry_id": 324,
+        "keyword_name": "Generator"
+    },
+    {
+        "keyword_id": 28140,
+        "product_id": 1245,
+        "industry_id": 39,
+        "sub_industry_id": 103,
+        "keyword_name": "Hot Mix Plant"
     }
 ]
