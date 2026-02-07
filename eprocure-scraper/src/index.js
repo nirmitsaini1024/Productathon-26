@@ -61,21 +61,52 @@ async function run() {
   const keywords = cliKeywords.length ? cliKeywords : envKeywords.length ? envKeywords : KEYWORDS;
 
   const delayMs = Number(process.env.DELAY_MS ?? 3000);
+  const scrapeDetails = process.env.SKIP_DETAILS !== "1"; // Allow skipping detail scraping via env var
+  const downloadDocuments = process.env.DOWNLOAD_DOCS === "1"; // Enable document downloads via env var
 
   for (const keyword of keywords) {
     await limit(async () => {
-      console.log(`Searching: ${keyword}`);
+      console.log(`Searching: ${keyword}${scrapeDetails ? ' (with details)' : ''}${downloadDocuments ? ' + docs' : ''}`);
 
       try {
-        const tenders = await scrapeKeyword(keyword);
+        // Pass scrapeDetails and downloadDocuments options to scrapeKeyword to fetch details in same session
+        const tenders = await scrapeKeyword(keyword, { 
+          scrapeDetails, 
+          downloadDocuments,
+          outputDir: "output"
+        });
         console.log(`  Found ${tenders.length} rows`);
+        
+        // Count how many have detail fields
+        if (scrapeDetails) {
+          const tendersWithDetails = tenders.filter(t => 
+            Object.keys(t).some(k => !['keyword', 'publishedDate', 'closingDate', 'openingDate', 'title', 'reference', 'organisation', 'detailUrl'].includes(k))
+          );
+          console.log(`  Enriched ${tendersWithDetails.length}/${tenders.length} with detail data`);
+          
+          // Count documents downloaded
+          if (downloadDocuments) {
+            const totalDocs = tenders.reduce((sum, t) => {
+              const nitDocs = t.nitDocuments?.filter(d => d.localPath)?.length || 0;
+              const workDocs = t.workItemDocuments?.filter(d => d.localPath)?.length || 0;
+              return sum + nitDocs + workDocs;
+            }, 0);
+            if (totalDocs > 0) {
+              console.log(`  Downloaded ${totalDocs} documents`);
+            }
+          }
+        }
 
         // Store per-keyword results (merge with existing per-keyword file unless RESET=1)
         const fname = safeFilename(keyword) + ".json";
         const perPath = `output/by-keyword/${fname}`;
         const existingPer = reset ? [] : readJsonArrayIfExists(perPath);
         const mergedPer = mergeUnique(existingPer, tenders);
-        byKeyword.set(keyword, { path: perPath, tenders: mergedPer });
+        
+        // Only store if there's data
+        if (mergedPer.length > 0) {
+          byKeyword.set(keyword, { path: perPath, tenders: mergedPer });
+        }
 
         for (const t of tenders) {
           const key = tenderKey(t);
@@ -90,7 +121,11 @@ async function run() {
         const fname = safeFilename(keyword) + ".json";
         const perPath = `output/by-keyword/${fname}`;
         const existingPer = reset ? [] : readJsonArrayIfExists(perPath);
-        if (!byKeyword.has(keyword)) byKeyword.set(keyword, { path: perPath, tenders: existingPer });
+        
+        // Only store if there's existing data
+        if (!byKeyword.has(keyword) && existingPer.length > 0) {
+          byKeyword.set(keyword, { path: perPath, tenders: existingPer });
+        }
       }
 
       // Polite inter-keyword delay (plus jitter)
@@ -101,19 +136,30 @@ async function run() {
   fs.mkdirSync("output", { recursive: true });
   fs.mkdirSync("output/by-keyword", { recursive: true });
 
-  // Write per-keyword files (keyword-based filename)
+  // Write per-keyword files (keyword-based filename) - only if they have data
+  let savedKeywordFiles = 0;
   for (const [, payload] of byKeyword.entries()) {
-    fs.writeFileSync(
-      payload.path,
-      JSON.stringify(payload.tenders, null, 2),
-      "utf-8"
-    );
+    if (payload.tenders.length > 0) {
+      fs.writeFileSync(
+        payload.path,
+        JSON.stringify(payload.tenders, null, 2),
+        "utf-8"
+      );
+      savedKeywordFiles++;
+    }
   }
 
-  fs.writeFileSync("output/tenders.json", JSON.stringify(results, null, 2), "utf-8");
-  console.log(
-    `Saved ${results.length} unique tenders to output/tenders.json` + (reset ? " (reset)" : " (merged)")
-  );
+  // Only write combined results if there's data
+  if (results.length > 0) {
+    fs.writeFileSync("output/tenders.json", JSON.stringify(results, null, 2), "utf-8");
+    console.log(
+      `Saved ${results.length} unique tenders to output/tenders.json` + (reset ? " (reset)" : " (merged)")
+    );
+  } else {
+    console.log("No tenders found - output/tenders.json not created");
+  }
+  
+  console.log(`Saved ${savedKeywordFiles} keyword files with data`);
 }
 
 run();
