@@ -16,7 +16,9 @@ load_dotenv()
 app = FastAPI()
 
 parser = PydanticOutputParser(pydantic_object=AIGeneratedLeadData)
-model = ChatOpenAI(model="openai/gpt-5-nano", base_url="https://openrouter.ai/api/v1")
+model = ChatOpenAI(
+    model="google/gemini-2.5-flash-lite", base_url="https://openrouter.ai/api/v1"
+)
 prompt = ChatPromptTemplate([("user", SYSTEM_PROMPT)])
 callback_handler = CallbackHandler()
 
@@ -36,10 +38,7 @@ async def enrich_tender(request: RequestBody):
     result = await chain.ainvoke(
         {"input": data_json, "output_format": parser.get_format_instructions()},
         config={
-            "callbacks": callback_handler,
-            "metadata": {
-                "langfuse_tag": request.tenderId
-            }
+            "callbacks": [callback_handler]
         }
     )
     return result
@@ -49,3 +48,8 @@ async def enrich_tender(request: RequestBody):
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

@@ -102,24 +102,12 @@ class AIGeneratedLeadData(BaseModel):
     confidence: int = Field(
         ..., ge=0, le=100, description="Confidence in lead quality (0-100)"
     )
-
-    # Why This Lead Exists (Signals Extraction)
-    signals: List[Signal] = Field(..., description="List of extracted signals")
-
-    # Product Recommendations from Tender Analysis
+    signals: List[Signal] = Field(..., description="List of extracted signals. (Maximum two, do not add more than that)", max_length=2)
     products_recommended: List[ProductRecommendation] = Field(
         ..., description="List of recommended products"
     )
-
-    # Next Actions Auto-Generation
     next_actions: NextActions = Field(..., description="Auto-generated next actions")
-
-    # Sales Routing (AI Assignment)
-    sales_owner: str = Field(..., description="Assigned regional manager")
-    field_officer: str = Field(..., description="Assigned sales officer")
     region: str = Field(..., description="Extracted/mapped region")
-
-    # Lead Metadata
     created_at: str = Field(..., description="ISO timestamp of lead creation")
     source: LeadSource = Field(..., description="Source of the tender/lead")
     tender_reference: str = Field(
