@@ -58,6 +58,11 @@ interface DashboardMetrics {
     count: number
     conversion_rate: string
   }>
+  by_state?: Array<{
+    state: string
+    count: number
+    conversion_rate: string
+  }>
 }
 
 interface ExecutiveDashboardProps {
@@ -107,6 +112,33 @@ export function ExecutiveDashboard({ metrics }: ExecutiveDashboardProps) {
     region: r.region,
     leads: r.count,
   }))
+
+  // State tile heatmap (India-style)
+  const stateRows = (metrics.by_state || []).filter((s) => s && s.state)
+  const stateMax = stateRows.reduce((m, s) => Math.max(m, Number(s.count) || 0), 0)
+  const stateMin = stateRows.reduce((m, s) => Math.min(m, Number(s.count) || 0), Number.POSITIVE_INFINITY)
+  const safeStateMin = Number.isFinite(stateMin) ? stateMin : 0
+
+  const heatColor = (count: number) => {
+    if (!stateMax || stateMax <= 0) return 'bg-muted'
+    const x = Math.max(0, Math.min(1, (count - safeStateMin) / Math.max(1, stateMax - safeStateMin)))
+    // 6-band ramp (PSU-friendly: muted -> teal)
+    if (x < 0.12) return 'bg-muted'
+    if (x < 0.28) return 'bg-teal-50'
+    if (x < 0.45) return 'bg-teal-100'
+    if (x < 0.62) return 'bg-teal-200'
+    if (x < 0.80) return 'bg-teal-300'
+    return 'bg-teal-400'
+  }
+
+  const heatLegend = [
+    { label: 'Low', cls: 'bg-muted' },
+    { label: '', cls: 'bg-teal-50' },
+    { label: '', cls: 'bg-teal-100' },
+    { label: '', cls: 'bg-teal-200' },
+    { label: '', cls: 'bg-teal-300' },
+    { label: 'High', cls: 'bg-teal-400' },
+  ]
 
   return (
     <div className="space-y-6">
@@ -290,43 +322,71 @@ export function ExecutiveDashboard({ metrics }: ExecutiveDashboardProps) {
           </CardContent>
         </Card>
 
-        {/* Regional Performance */}
+        {/* Geography Heatmap (States) */}
         <Card className="border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">By Region</CardTitle>
-            <p className="text-sm text-muted-foreground">Lead Count & Conversion</p>
+            <CardTitle className="text-lg">Geography Heatmap</CardTitle>
+            <p className="text-sm text-muted-foreground">Leads by State (tile heatmap)</p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {metrics.by_region.map((region, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-accent" />
-                      <span className="text-sm font-medium text-foreground">
-                        {region.region}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {region.count} leads
-                      </Badge>
-                      <span className="text-xs font-semibold text-foreground">
-                        {region.conversion_rate}
-                      </span>
-                    </div>
+            {stateRows.length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                No state-level data available yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <MapPin className="w-4 h-4 text-accent" />
+                    <span>
+                      Scale: {safeStateMin} → {stateMax} leads
+                    </span>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-accent rounded-full"
-                      style={{
-                        width: `${parseInt(region.conversion_rate)}%`,
-                      }}
-                    />
+                  <div className="flex items-center gap-1.5">
+                    {heatLegend.map((h, idx) => (
+                      <div key={idx} className="flex items-center gap-1">
+                        <div className={`w-4 h-3 rounded ${h.cls} border border-border`} />
+                        {h.label ? (
+                          <span className="text-[10px] text-muted-foreground">{h.label}</span>
+                        ) : null}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+                  {stateRows.map((s) => {
+                    const count = Number(s.count) || 0
+                    const label = `${s.state} • ${count} leads • ${s.conversion_rate} conv.`
+                    return (
+                      <div
+                        key={s.state}
+                        title={label}
+                        className="group rounded-md border border-border bg-card p-2 hover:shadow-sm transition-shadow"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-foreground truncate">
+                              {s.state}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {count} leads
+                            </p>
+                          </div>
+                          <div className={`w-4 h-4 rounded ${heatColor(count)} border border-border flex-shrink-0`} />
+                        </div>
+                        <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-accent rounded-full"
+                            style={{ width: `${stateMax ? Math.round((count / stateMax) * 100) : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

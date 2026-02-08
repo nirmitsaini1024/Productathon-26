@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -12,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Phone,
+  MessageCircle,
   Mail,
   MapPin,
   Globe,
@@ -120,6 +121,10 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
   const [emailMessage, setEmailMessage] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailResult, setEmailResult] = useState<string | null>(null)
+  const [whatsAppOpen, setWhatsAppOpen] = useState(false)
+  const [whatsAppDigits, setWhatsAppDigits] = useState('')
+  const [whatsAppSending, setWhatsAppSending] = useState(false)
+  const [whatsAppResult, setWhatsAppResult] = useState<string | null>(null)
   const [officers, setOfficers] = useState<Officer[]>([])
   const [officersLoading, setOfficersLoading] = useState(false)
   const [officersError, setOfficersError] = useState<string | null>(null)
@@ -128,11 +133,39 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
   const [enrichLoading, setEnrichLoading] = useState(false)
   const [enrichError, setEnrichError] = useState<string | null>(null)
 
+  const buildPayloadLead = (): Lead => {
+    return enriched
+      ? ({
+          ...lead,
+          lead_score: typeof enriched.lead_score === 'number' ? enriched.lead_score : lead.lead_score,
+          urgency: (enriched.urgency as Lead['urgency']) || lead.urgency,
+          confidence: typeof enriched.confidence === 'number' ? enriched.confidence : lead.confidence,
+          signals: Array.isArray(enriched.signals) ? enriched.signals : lead.signals,
+          products_recommended: Array.isArray(enriched.products_recommended)
+            ? enriched.products_recommended
+            : lead.products_recommended,
+          next_actions: (enriched.next_actions as Lead['next_actions']) || lead.next_actions,
+          sales_owner: enriched.sales_owner || lead.sales_owner,
+          field_officer: enriched.field_officer || lead.field_officer,
+          location: {
+            ...lead.location,
+            region: enriched.region || lead.location.region,
+          },
+        } as Lead)
+      : lead
+  }
+
   const handleSave = async () => {
     setIsSaving(true)
+    const shouldPromptWhatsApp = status === 'accepted' && lead.status !== 'accepted'
     setTimeout(() => {
       onStatusChange(lead.id, status, notes)
       setIsSaving(false)
+      if (shouldPromptWhatsApp) {
+        setWhatsAppDigits('')
+        setWhatsAppResult(null)
+        setWhatsAppOpen(true)
+      }
     }, 500)
   }
 
@@ -141,26 +174,7 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
     setEmailResult(null)
     try {
       const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '')
-      const payloadLead: Lead =
-        enriched
-          ? ({
-              ...lead,
-              lead_score: typeof enriched.lead_score === 'number' ? enriched.lead_score : lead.lead_score,
-              urgency: (enriched.urgency as Lead['urgency']) || lead.urgency,
-              confidence: typeof enriched.confidence === 'number' ? enriched.confidence : lead.confidence,
-              signals: Array.isArray(enriched.signals) ? enriched.signals : lead.signals,
-              products_recommended: Array.isArray(enriched.products_recommended)
-                ? enriched.products_recommended
-                : lead.products_recommended,
-              next_actions: (enriched.next_actions as Lead['next_actions']) || lead.next_actions,
-              sales_owner: enriched.sales_owner || lead.sales_owner,
-              field_officer: enriched.field_officer || lead.field_officer,
-              location: {
-                ...lead.location,
-                region: enriched.region || lead.location.region,
-              },
-            } as Lead)
-          : lead
+      const payloadLead = buildPayloadLead()
       const res = await fetch(`${apiBase}/api/email/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,6 +194,39 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
       setEmailResult(`Failed to send: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setEmailSending(false)
+    }
+  }
+
+  const handleSendWhatsApp = async () => {
+    setWhatsAppSending(true)
+    setWhatsAppResult(null)
+    try {
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '')
+      const payloadLead = buildPayloadLead()
+      const digits = String(whatsAppDigits || '').replace(/\D/g, '').trim()
+      if (!digits) throw new Error('Please enter a phone number.')
+      const to = `+91${digits}`
+      const res = await fetch(`${apiBase}/api/whatsapp/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to,
+          lead: payloadLead,
+          contentVariables: {
+            '1': String(payloadLead?.signals?.[0]?.keyword || payloadLead.company_name || 'Tender'),
+            '2': String(payloadLead?.signals?.[0]?.source || payloadLead.website || ''),
+          },
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || `Send failed: ${res.status}`)
+      }
+      setWhatsAppResult('WhatsApp notification sent.')
+    } catch (err) {
+      setWhatsAppResult(`Failed to send: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setWhatsAppSending(false)
     }
   }
 
@@ -210,6 +257,13 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
     if (emailOpen) loadOfficers()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emailOpen])
+
+  useEffect(() => {
+    if (whatsAppOpen) {
+      setWhatsAppDigits((v) => String(v || '').replace(/\D/g, ''))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whatsAppOpen])
 
   const loadEnrichment = async (leadId: string) => {
     setEnrichLoading(true)
@@ -562,9 +616,15 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
 
       {/* E. One-Tap Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Button className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium flex items-center justify-center gap-2">
-          <Phone className="w-4 h-4" />
-          <span className="hidden sm:inline">Call</span>
+        <Button
+          onClick={() => {
+            setWhatsAppOpen(true)
+            setWhatsAppResult(null)
+          }}
+          className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium flex items-center justify-center gap-2"
+        >
+          <MessageCircle className="w-4 h-4" />
+          <span className="hidden sm:inline">WhatsApp</span>
         </Button>
         <Button
           onClick={() => {
@@ -585,6 +645,49 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           <span className="hidden sm:inline">Maps</span>
         </Button>
       </div>
+
+      <Dialog open={whatsAppOpen} onOpenChange={setWhatsAppOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send WhatsApp Notification</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">WhatsApp Number</label>
+              <div className="flex items-center gap-2">
+                <div className="h-10 px-3 inline-flex items-center rounded-md border border-border bg-muted text-foreground font-mono text-sm select-none">
+                  +91
+                </div>
+                <Input
+                  value={whatsAppDigits}
+                  onChange={(e) => setWhatsAppDigits(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Mobile number"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                We’ll send to <span className="font-mono">+91{whatsAppDigits || 'XXXXXXXXXX'}</span>.
+              </p>
+            </div>
+            {whatsAppResult && (
+              <p className="text-xs text-muted-foreground break-words">{whatsAppResult}</p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setWhatsAppOpen(false)}
+                disabled={whatsAppSending}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSendWhatsApp} disabled={whatsAppSending || !whatsAppDigits.trim()}>
+                {whatsAppSending ? 'Sending…' : 'Send'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
         <DialogContent className="max-w-lg">

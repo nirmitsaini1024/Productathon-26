@@ -258,12 +258,25 @@ PORT=4000 npm run api
 
 - `GET /health`
 - `GET /api/leads?limit=200` → returns `{ leads, dashboard_metrics }`
+- `POST /api/whatsapp/send` → sends a Twilio WhatsApp template message (expects JSON `{ to: "+91..." }`)
+- `POST /api/email/send` → sends an email via Resend
+- `GET /api/officers` / `POST /api/officers` / `DELETE /api/officers/:id` → officer directory for the UI
 
 ### CORS
 
 Optionally restrict browser access with:
 
 - `CORS_ORIGINS="http://localhost:3000,https://your-ui-domain"`
+
+### WhatsApp (Twilio) configuration
+
+To enable WhatsApp notifications from the HPCL UI, set these env vars:
+
+- `TWILIO_ACCOUNT_SID` (**required**)
+- `TWILIO_AUTH_TOKEN` (**required**)
+- `TWILIO_WHATSAPP_FROM` (default: `whatsapp:+14155238886`)
+- `TWILIO_WHATSAPP_CONTENT_SID` (default: `HXb5b62575e6e4ff6129ad7c8efe1f983e`)
+- `TWILIO_WHATSAPP_CONTENT_VARIABLES` (default: `'{"1":"12/1","2":"3pm"}'`)
 
 ## Troubleshooting
 

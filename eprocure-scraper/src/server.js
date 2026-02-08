@@ -8,6 +8,7 @@ import { searchTender247 } from "./t247-client.js";
 import { KEYWORDS } from "./keywords.js";
 import { TENDER247_KEYWORDS } from "./tender247_keywords.js";
 import { sendLeadEmail } from "./email.js";
+import { sendWhatsAppTemplateMessage } from "./whatsapp.js";
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -15,8 +16,25 @@ function clamp(n, min, max) {
 
 function parseMaybeDate(s) {
   if (!s) return null;
-  const d = new Date(String(s));
-  return Number.isNaN(d.getTime()) ? null : d;
+  const raw = String(s).trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) return d;
+
+  // Support common non-ISO formats we see in scraped sources, e.g. "12-02-2026" (dd-mm-yyyy)
+  const m = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) {
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    const yyyy = Number(m[3]);
+    const hh = m[4] != null ? Number(m[4]) : 0;
+    const mi = m[5] != null ? Number(m[5]) : 0;
+    const ss = m[6] != null ? Number(m[6]) : 0;
+    const dt = new Date(yyyy, mm - 1, dd, hh, mi, ss);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  return null;
 }
 
 function daysUntil(d, now = new Date()) {
@@ -55,6 +73,30 @@ function guessLocation(t) {
   const city = parts[0] || "Unknown";
   const state = parts[1] || parts[0] || "Unknown";
   return { city, state, region: "Unknown" };
+}
+
+function zoneNameFromId(id) {
+  const z = Number(id);
+  if (!Number.isFinite(z)) return "Unknown";
+  // Tender247 uses a "statezone_id" that matches these 5 broad zones.
+  if (z === 1) return "West";
+  if (z === 2) return "South";
+  if (z === 3) return "North";
+  if (z === 4) return "East";
+  if (z === 5) return "Central";
+  return "Unknown";
+}
+
+function guessLocationT247(t) {
+  const raw = String(t.site_location ?? "").trim();
+  if (raw) {
+    const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+    const city = parts[0] || "Unknown";
+    const state = String(t.state_name ?? parts[1] ?? "Unknown").trim() || "Unknown";
+    return { city, state, region: zoneNameFromId(t.statezone_id) };
+  }
+  const state = String(t.state_name ?? "Unknown").trim() || "Unknown";
+  return { city: "Unknown", state, region: zoneNameFromId(t.statezone_id) };
 }
 
 function toLead(t) {
@@ -122,6 +164,71 @@ function toLead(t) {
   };
 }
 
+function toLeadT247(t) {
+  const id = `t247:${String(t.tender_id ?? t._id ?? "")}`;
+  const company = String(t.organization_name || "Unknown Organisation");
+  const loc = guessLocationT247(t);
+
+  const published =
+    parseMaybeDate(t.updatedAt) ||
+    parseMaybeDate(t.ingestedAt) ||
+    parseMaybeDate(t.createdAt) ||
+    new Date();
+
+  const urgency = computeUrgency({ closingDate: t.tender_endsubmission_datetime });
+  const base = urgency === "High" ? 85 : urgency === "Medium" ? 70 : 55;
+  const boost = (t.estimatedcost ? 5 : 0) + (t.requirement_workbrief ? 5 : 0);
+  const lead_score = clamp(base + boost, 10, 99);
+
+  const confidence = clamp(80 + (t.requirement_workbrief ? 5 : 0) + (t.estimatedcost ? 5 : 0), 30, 98);
+
+  const website = "https://tender247.com";
+  const sourceUrl = website;
+  const title = String(t.requirement_workbrief || "Tender Opportunity");
+
+  return {
+    id,
+    company_name: company,
+    location: { city: loc.city, state: loc.state, region: loc.region },
+    industry: "Tender247",
+    website,
+    company_size: "Unknown",
+    lead_score,
+    urgency,
+    confidence,
+    signals: [
+      {
+        type: "Tender247",
+        keyword: title,
+        source: sourceUrl,
+        date: published.toISOString(),
+        trust_score: 85,
+        summary: title,
+      },
+    ],
+    products_recommended: [
+      {
+        product_name: String(t.keyword_text || "Tender247 Tender"),
+        confidence: 80,
+        reason_code: `Tender247 tender_id=${String(t.tender_id ?? "")}`,
+        estimated_volume: "TBD",
+        margin_potential: urgency === "High" ? "High" : "Medium",
+      },
+    ],
+    next_actions: {
+      suggested_action: "WhatsApp + Email",
+      timing: urgency === "High" ? "Within 24-48 hours" : "Within 7 days",
+      context: `Review Tender247 tender. ID: ${String(t.tender_id ?? "N/A")}`,
+      contact_trigger: "Tender detected on Tender247",
+    },
+    sales_owner: "Unassigned",
+    field_officer: "Unassigned",
+    status: "new",
+    notes: "",
+    created_at: published.toISOString().slice(0, 10),
+  };
+}
+
 function computeMetricsFromLeads(leads) {
   const total = leads.length;
   const accepted = leads.filter((l) => l.status === "accepted").length;
@@ -149,6 +256,42 @@ function computeMetricsFromLeads(leads) {
     .sort((a, b) => b[1] - a[1])
     .map(([region, count]) => ({ region, count, conversion_rate: "0%" }));
 
+  // Sector distribution (derive from lead.industry)
+  const sectorAgg = new Map();
+  for (const l of leads) {
+    const sector = String(l.industry || "Unknown").trim() || "Unknown";
+    const cur = sectorAgg.get(sector) || { count: 0, sumScore: 0 };
+    cur.count += 1;
+    cur.sumScore += Number(l.lead_score) || 0;
+    sectorAgg.set(sector, cur);
+  }
+  const by_sector = [...sectorAgg.entries()]
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 8)
+    .map(([sector, v]) => ({
+      sector,
+      count: v.count,
+      avg_score: v.count ? Math.round(v.sumScore / v.count) : 0,
+    }));
+
+  // State heatmap (best-effort; derives from lead.location.state)
+  const states = new Map();
+  const convertedByState = new Map();
+  for (const l of leads) {
+    const st = String(l.location?.state || "Unknown").trim() || "Unknown";
+    states.set(st, (states.get(st) ?? 0) + 1);
+    if (l.status === "converted") {
+      convertedByState.set(st, (convertedByState.get(st) ?? 0) + 1);
+    }
+  }
+  const by_state = [...states.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([state, count]) => {
+      const conv = convertedByState.get(state) ?? 0;
+      const rate = count ? `${Math.round((conv / count) * 100)}%` : "0%";
+      return { state, count, conversion_rate: rate };
+    });
+
   return {
     this_week: {
       leads_discovered: total,
@@ -167,8 +310,9 @@ function computeMetricsFromLeads(leads) {
       estimated_revenue: "TBD",
     },
     by_product,
-    by_sector: [{ sector: "Government Tender", count: total, avg_score: avg }],
+    by_sector,
     by_region,
+    by_state,
   };
 }
 
@@ -215,8 +359,49 @@ app.get("/api/leads", async (req, res) => {
   try {
     const limit = clamp(Number(req.query.limit ?? 200), 1, 500);
     const Tender = await getTenderModel();
-    const docs = await Tender.find({}).sort({ updatedAt: -1, createdAt: -1 }).limit(limit).lean();
-    const leads = docs.map(toLead);
+    const T247 = await getT247TenderModel();
+
+    // Pull from both sources (eProcure + Tender247), merge, then slice to requested limit.
+    const [docsA, docsB] = await Promise.all([
+      Tender.find({}).sort({ updatedAt: -1, createdAt: -1 }).limit(limit).lean(),
+      T247.find({}).sort({ ingestedAt: -1, tender_id: -1 }).limit(limit).lean(),
+    ]);
+
+    const mappedA = (docsA || []).map((d) => {
+      const lead = toLead(d);
+      const sort =
+        parseMaybeDate(d.updatedAt) ||
+        parseMaybeDate(d.createdAt) ||
+        parseMaybeDate(lead.created_at) ||
+        new Date(0);
+      return { lead, sortTs: sort.getTime() };
+    });
+
+    const mappedB = (docsB || []).map((d) => {
+      const lead = toLeadT247(d);
+      const sort =
+        parseMaybeDate(d.ingestedAt) ||
+        parseMaybeDate(d.updatedAt) ||
+        parseMaybeDate(d.createdAt) ||
+        parseMaybeDate(lead.created_at) ||
+        new Date(0);
+      return { lead, sortTs: sort.getTime() };
+    });
+
+    // Dedupe by lead.id (we prefix Tender247 ids, so collisions are unlikely)
+    const seen = new Set();
+    const merged = [...mappedA, ...mappedB]
+      .sort((x, y) => y.sortTs - x.sortTs)
+      .map((x) => x.lead)
+      .filter((l) => {
+        if (!l?.id) return false;
+        if (seen.has(l.id)) return false;
+        seen.add(l.id);
+        return true;
+      })
+      .slice(0, limit);
+
+    const leads = merged;
     const dashboard_metrics = computeMetricsFromLeads(leads);
     res.json({ leads, dashboard_metrics });
   } catch (err) {
@@ -846,6 +1031,67 @@ app.post("/api/email/send", async (req, res) => {
     const to = req?.body?.to;
     console.error(`[email] failed ts=${ts} to=${String(to ?? "")} error=${err?.message ?? String(err)}`);
     return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.post("/api/whatsapp/send", async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== "object") {
+      return res.status(400).json({ ok: false, error: "Missing JSON body" });
+    }
+
+    // Accept either `to` or `phone` for convenience.
+    const to = String(body.to ?? body.phone ?? "").trim();
+    if (!to) return res.status(400).json({ ok: false, error: "`to` is required (E.164 like +91...)" });
+
+    // Optional overrides (otherwise env defaults are used)
+    const from = body.from != null ? String(body.from).trim() : null;
+    const contentSid = body.contentSid != null ? String(body.contentSid).trim() : null;
+    let contentVariables = body.contentVariables ?? null; // object or string
+
+    // If caller didn't provide variables, try to build a tender-focused message from lead info.
+    const lead = body.lead && typeof body.lead === "object" ? body.lead : null;
+    if (!contentVariables && lead) {
+      const title =
+        String(lead?.signals?.[0]?.keyword ?? lead?.company_name ?? lead?.id ?? "Tender").trim() || "Tender";
+      const link = String(lead?.signals?.[0]?.source ?? lead?.website ?? "").trim();
+      const ref = String(lead?.next_actions?.reference_number ?? lead?.tender_reference ?? "").trim();
+
+      contentVariables = {
+        "1": ref ? `${title} (${ref})` : title,
+        "2": link || `${String(lead?.location?.city ?? "").trim()} ${String(lead?.location?.state ?? "").trim()}`.trim(),
+      };
+    }
+
+    const out = await sendWhatsAppTemplateMessage({
+      to,
+      from: from || undefined,
+      contentSid: contentSid || undefined,
+      contentVariables: contentVariables || undefined,
+    });
+
+    const sid = out?.sid ?? null;
+    if (!sid) {
+      const ts = new Date().toISOString();
+      console.error(`[whatsapp] failed ts=${ts} to=${to} error=no sid returned`, out);
+      return res.status(502).json({ ok: false, error: "Twilio did not return message sid", twilio: out });
+    }
+
+    const ts = new Date().toISOString();
+    console.log(`[whatsapp] sent ts=${ts} to=${to} sid=${sid}`);
+    return res.json({ ok: true, sid, twilio: { status: out?.status ?? null } });
+  } catch (err) {
+    const ts = new Date().toISOString();
+    const to = req?.body?.to ?? req?.body?.phone;
+    console.error(`[whatsapp] failed ts=${ts} to=${String(to ?? "")} error=${err?.message ?? String(err)}`);
+    const status = Number(err?.status);
+    const http = Number.isFinite(status) ? status : 500;
+    return res.status(http === 401 || http === 403 ? 502 : http).json({
+      ok: false,
+      error: err?.message ?? String(err),
+      twilio: err?.twilio ?? null,
+    });
   }
 });
 
