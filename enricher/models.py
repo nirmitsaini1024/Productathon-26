@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Literal, Dict, Any
 
 
-SuggestedAction = Literal["Call", "Email", "Schedule Meeting", "Send Proposal"]
+SuggestedAction = Literal["Call", "Email", "Call + Email", "Schedule Meeting", "Send Proposal"]
 LeadSource = Literal["eprocure", "tender_portal", "news", "other"]
 SignalType = Literal["Tender", "Keywords", "Work Description", "Budget Signal"]
 

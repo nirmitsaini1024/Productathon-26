@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -14,6 +14,9 @@ from prompt import SYSTEM_PROMPT
 load_dotenv()
 
 app = FastAPI()
+
+ist = timezone(timedelta(hours=5, minutes=30))
+now_ist = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S %Z")
 
 parser = PydanticOutputParser(pydantic_object=AIGeneratedLeadData)
 model = ChatOpenAI(
@@ -36,10 +39,12 @@ async def enrich_tender(request: RequestBody):
     data_json = json.dumps(data_dict, indent=2, ensure_ascii=False)
 
     result = await chain.ainvoke(
-        {"input": data_json, "output_format": parser.get_format_instructions()},
-        config={
-            "callbacks": [callback_handler]
-        }
+        {
+            "input": data_json,
+            "output_format": parser.get_format_instructions(),
+            "current_time": datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S %Z"),
+        },
+        config={"callbacks": [callback_handler]},
     )
     return result
 
@@ -48,6 +53,7 @@ async def enrich_tender(request: RequestBody):
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
 
 if __name__ == "__main__":
     import uvicorn
