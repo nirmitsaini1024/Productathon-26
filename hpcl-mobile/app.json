@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "HPCL Sales Intelligence",
+    "slug": "hpcl-sales",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hpcl.sales"
+    },
+    "android": {
+      "package": "com.hpcl.sales",
+      "permissions": [
+        "android.permission.INTERNET"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id-here"
+      }
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

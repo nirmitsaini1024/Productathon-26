@@ -105,7 +105,8 @@ An **end-to-end sales intelligence platform** that automatically:
 ## 🛠️ Tech Stack
 
 **Frontend:**
-- Next.js 16 (React 19)
+- Next.js 16 (React 19) - Web dashboard
+- React Native + Expo - Mobile app (WebView wrapper)
 - TailwindCSS + shadcn/ui components
 - Recharts for data visualization
 - PWA (Service Worker + Web App Manifest)
@@ -215,15 +216,29 @@ An **end-to-end sales intelligence platform** that automatically:
 
 6. **Open Dashboard** → http://localhost:3000
 
+7. **(Optional) Setup Mobile App**
+   ```bash
+   cd hpcl-mobile
+   npm install
+   # Update DASHBOARD_URL in App.js to your local IP or deployed URL
+   npm start  # Scan QR with Expo Go app
+   ```
+
 ---
 
-## 📱 PWA Installation
+## 📱 Mobile Access
 
-The dashboard is a **Progressive Web App** and can be installed on:
+### **Option 1: PWA (Progressive Web App)**
+The dashboard is installable as a PWA:
 - **Android/iOS**: Open in Chrome/Safari → Menu → "Add to Home Screen"
 - **Desktop**: Chrome → Address bar icon → "Install"
 
-Works offline and behaves like a native app!
+### **Option 2: Native Mobile App (React Native)**
+A native Android/iOS app is available in `hpcl-mobile/`:
+- Full WebView wrapper with native navigation
+- Hardware back button support
+- Better performance and native feel
+- See `hpcl-mobile/README.md` for build instructions
 
 ---
 
@@ -251,32 +266,16 @@ Works offline and behaves like a native app!
 - 🎯 **Purpose-built for tender management**
 - 🤖 **AI enrichment** specific to PSU product portfolios
 - 📡 **Automated ingestion** from government portals
+- 📱 **True mobile support** (PWA + native React Native app)
 
 ---
 
 ## 🛣️ Roadmap
 
 - [ ] **Multi-language support** (regional languages for wider adoption)
-- [ ] **Mobile app** (React Native for iOS/Android)
+- [x] **Mobile app** (React Native + Expo WebView wrapper) ✅
 - [ ] **Slack/Teams integration** (notifications in team channels)
 - [ ] **Document analysis** (extract specs from tender PDFs using OCR)
 - [ ] **Predictive analytics** (win probability scoring)
 - [ ] **Competitor intelligence** (track which companies bid on similar tenders)
-
-
----
-
-## 👥 Team
-
-[Your team information here]
-
----
-
-## 📧 Contact
-
-For questions, demos, or partnership inquiries: [your-email@example.com]
-
----
-
-**Built with ❤️ for sales teams who deserve better tools.**
 
