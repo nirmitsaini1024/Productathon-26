@@ -1,7 +1,6 @@
 'use client'
 
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MessageCircle, Clock } from 'lucide-react'
 
@@ -9,7 +8,7 @@ interface NotificationLead {
   id: string
   company_name: string
   lead_score: number
-  urgency: 'High' | 'Medium' | 'Low'
+  urgency: string
   products_recommended: Array<{
     product_name: string
   }>
@@ -25,12 +24,6 @@ interface NotificationPreviewProps {
 }
 
 export function NotificationPreview({ leads, onViewLead }: NotificationPreviewProps) {
-  const urgencyEmoji = {
-    High: '🔴',
-    Medium: '🟡',
-    Low: '🟢',
-  }
-
   return (
     <div className="space-y-3 max-w-md">
       <div className="flex items-center gap-2 mb-4">
@@ -57,10 +50,9 @@ export function NotificationPreview({ leads, onViewLead }: NotificationPreviewPr
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{urgencyEmoji[lead.urgency]}</span>
                   <div className="flex-1">
                     <p className="font-semibold text-foreground text-sm leading-tight">
-                      High-Intent Lead
+                      Lead Alert
                     </p>
                     <p className="text-xs text-muted-foreground">
                       New opportunity detected
@@ -68,9 +60,6 @@ export function NotificationPreview({ leads, onViewLead }: NotificationPreviewPr
                   </div>
                 </div>
               </div>
-              <Badge className="bg-primary text-primary-foreground text-xs flex-shrink-0">
-                Score {lead.lead_score}
-              </Badge>
             </div>
 
             {/* Company Info */}

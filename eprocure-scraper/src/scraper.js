@@ -1,7 +1,7 @@
 import axios from "axios";
 import { load } from "cheerio";
 import qs from "qs";
-import { parseTenderDetail, parseTenderList } from "./parser.js";
+import { parseTenderList } from "./parser.js";
 import { absUrl, jitter, normalizeSpace, sleep } from "./utils.js";
 
 const BASE_URL = "https://eprocure.gov.in/eprocure/app";
@@ -276,8 +276,7 @@ async function submitHomeTenderSearch(client, homeHtml, keyword) {
   return res.data;
 }
 
-export async function scrapeKeyword(keyword, options = {}) {
-  const { scrapeDetails = false, downloadDocuments = false, outputDir = "output" } = options;
+export async function scrapeKeyword(keyword) {
   const client = createHttpClient();
 
   // Step 1: Load homepage (sets initial session cookies)
@@ -320,156 +319,15 @@ export async function scrapeKeyword(keyword, options = {}) {
       throw e;
     }
 
-    const tenders = parseTenderList(res.data, keyword);
-    
-    // If scrapeDetails is enabled, fetch details using the same client (with session)
-    if (scrapeDetails && tenders.length > 0) {
-      for (const tender of tenders) {
-        try {
-          const details = await scrapeTenderDetailWithClient(client, tender.detailUrl, {
-            downloadDocuments,
-            outputDir
-          });
-          Object.assign(tender, details);
-          await sleep(jitter(1500, 0.3));
-        } catch (err) {
-          // Silently continue on detail fetch errors
-        }
-      }
-    }
-    
-    return tenders;
+    return parseTenderList(res.data, keyword);
   } catch (err) {
     // Fallback: home tender search (observed to work without captcha more often).
     if (err?.code === "CAPTCHA" || /captcha/i.test(String(err?.message ?? ""))) {
       const html = await submitHomeTenderSearch(client, homeRes.data, keyword);
-      const tenders = parseTenderList(html, keyword);
-      
-      // If scrapeDetails is enabled, fetch details using the same client
-      if (scrapeDetails && tenders.length > 0) {
-        for (const tender of tenders) {
-          try {
-            const details = await scrapeTenderDetailWithClient(client, tender.detailUrl, {
-              downloadDocuments,
-              outputDir
-            });
-            Object.assign(tender, details);
-            await sleep(jitter(1500, 0.3));
-          } catch (err) {
-            // Silently continue on detail fetch errors
-          }
-        }
-      }
-      
-      return tenders;
+      return parseTenderList(html, keyword);
     }
     throw err;
   }
-}
-
-/**
- * Download a document from the tender detail page
- * @param {Object} client - Axios client with session cookies
- * @param {string} docUrl - URL of the document to download
- * @returns {Promise<Buffer|null>} - Document buffer or null on failure
- */
-async function downloadDocument(client, docUrl) {
-  try {
-    const res = await client.get(docUrl, {
-      responseType: 'arraybuffer',
-      timeout: 60_000, // Longer timeout for large files
-    });
-    
-    if (res.status === 200 && res.data) {
-      return Buffer.from(res.data);
-    }
-    return null;
-  } catch (err) {
-    console.error(`      ✗ Failed to download document: ${err?.message ?? err}`);
-    return null;
-  }
-}
-
-/**
- * Scrape additional details from a tender's detail page using an existing client
- * @param {Object} client - Axios client with session cookies
- * @param {string} detailUrl - URL of the tender detail page
- * @param {Object} options - Options including downloadDocuments flag and outputDir
- * @returns {Promise<Object>} - Parsed tender details
- */
-async function scrapeTenderDetailWithClient(client, detailUrl, options = {}) {
-  try {
-    const res = await httpGetWithRetry(client, detailUrl);
-    
-    // Check if we got HTML content
-    if (!res.data || typeof res.data !== 'string') {
-      return {};
-    }
-    
-    // Check for session timeout
-    if (res.data.includes("Your session has timed out") || res.data.includes("Stale Session")) {
-      return {};
-    }
-    
-    const details = parseTenderDetail(res.data);
-    
-    // Download documents if requested
-    if (options.downloadDocuments && options.outputDir) {
-      const fs = await import("fs");
-      const path = await import("path");
-      
-      // Create documents directory
-      const docsDir = path.join(options.outputDir, "documents");
-      fs.mkdirSync(docsDir, { recursive: true });
-      
-      // Download NIT documents
-      if (details.nitDocuments && Array.isArray(details.nitDocuments)) {
-        for (const doc of details.nitDocuments) {
-          if (doc.downloadUrl) {
-            const buffer = await downloadDocument(client, doc.downloadUrl);
-            if (buffer) {
-              const fileName = doc.name.replace(/[^a-z0-9._-]/gi, '_');
-              const filePath = path.join(docsDir, fileName);
-              fs.writeFileSync(filePath, buffer);
-              doc.localPath = path.relative(options.outputDir, filePath);
-            }
-            await sleep(jitter(500, 0.3));
-          }
-        }
-      }
-      
-      // Download work item documents
-      if (details.workItemDocuments && Array.isArray(details.workItemDocuments)) {
-        for (const doc of details.workItemDocuments) {
-          if (doc.downloadUrl) {
-            const buffer = await downloadDocument(client, doc.downloadUrl);
-            if (buffer) {
-              const fileName = doc.name.replace(/[^a-z0-9._-]/gi, '_');
-              const filePath = path.join(docsDir, fileName);
-              fs.writeFileSync(filePath, buffer);
-              doc.localPath = path.relative(options.outputDir, filePath);
-            }
-            await sleep(jitter(500, 0.3));
-          }
-        }
-      }
-    }
-    
-    return details;
-  } catch (err) {
-    return {}; // Return empty object on failure
-  }
-}
-
-/**
- * Scrape additional details from a tender's detail page (standalone version)
- * Note: This may not work due to session requirements. Use scrapeKeyword with scrapeDetails option instead.
- * @param {string} detailUrl - URL of the tender detail page
- * @returns {Promise<Object>} - Parsed tender details
- */
-export async function scrapeTenderDetail(detailUrl) {
-  const client = createHttpClient();
-  return await scrapeTenderDetailWithClient(client, detailUrl);
 }
 
 

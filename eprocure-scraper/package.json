@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "api": "node src/server.js"
+    "api": "node src/server.js",
+    "rss": "node src/rss-index.js"
   },
   "keywords": [],
   "author": "",

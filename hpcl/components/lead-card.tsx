@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowRight, TrendingUp } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 interface LeadCardProps {
   id: string
@@ -13,7 +13,7 @@ interface LeadCardProps {
     state: string
   }
   lead_score: number
-  urgency: 'High' | 'Medium' | 'Low'
+  urgency: string
   confidence: number
   signals: Array<{
     type: string
@@ -37,14 +37,6 @@ export function LeadCard({
   products_recommended,
   onViewDossier,
 }: LeadCardProps) {
-  const urgencyColor = {
-    High: 'bg-destructive text-destructive-foreground',
-    Medium: 'bg-yellow-100 text-yellow-800',
-    Low: 'bg-green-100 text-green-800',
-  }[urgency]
-
-  const topProduct = products_recommended[0]
-
   return (
     <Card className="hover:shadow-md transition-shadow duration-200 border-border">
       <CardContent className="p-4 sm:p-5">
@@ -57,30 +49,9 @@ export function LeadCard({
               {location.city}, {location.state}
             </p>
           </div>
-          <Badge className={urgencyColor + ' whitespace-nowrap flex-shrink-0'}>
-            {urgency}
-          </Badge>
         </div>
 
         <div className="space-y-3 mb-4">
-          {/* Score Row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-accent" />
-              <span className="text-sm text-muted-foreground">Lead Score</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-accent to-primary"
-                  style={{ width: `${lead_score}%` }}
-                />
-              </div>
-              <span className="text-sm font-semibold text-foreground w-8 text-right">
-                {lead_score}%
-              </span>
-            </div>
-          </div>
 
           {/* Signals Summary */}
           <div>
@@ -108,30 +79,13 @@ export function LeadCard({
             </div>
           </div>
 
-          {/* Top Product */}
-          {topProduct && (
-            <div className="bg-muted/40 rounded p-2.5">
-              <p className="text-xs text-muted-foreground mb-1 font-medium">
-                Top Match
-              </p>
-              <p className="text-sm font-semibold text-foreground line-clamp-2">
-                {topProduct.product_name}
-              </p>
-              <p className="text-xs text-accent mt-1 font-medium">
-                {topProduct.confidence}% match
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer Stats */}
-        <div className="flex items-center justify-between text-xs mb-4 pb-3 border-t border-border pt-3">
-          <span className="text-muted-foreground">
-            Confidence: <span className="font-semibold text-foreground">{confidence}%</span>
-          </span>
-          <span className="text-muted-foreground">
-            Products: <span className="font-semibold text-foreground">{products_recommended.length}</span>
-          </span>
+          {/* Location (replaces Top Match) */}
+          <div className="bg-muted/40 rounded p-2.5">
+            <p className="text-xs text-muted-foreground mb-1 font-medium">Location</p>
+            <p className="text-sm font-semibold text-foreground line-clamp-2">
+              {location.city}, {location.state}
+            </p>
+          </div>
         </div>
 
         {/* CTA */}

@@ -8,14 +8,19 @@ import { ExecutiveDashboard } from '@/components/executive-dashboard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import {
   Search,
   Settings,
   Bell,
   BarChart3,
   MessageCircle,
+  Rss,
   Zap,
   Filter,
+  ExternalLink,
+  RefreshCw,
 } from 'lucide-react'
 
 interface Lead {
@@ -97,6 +102,19 @@ interface MockData {
   }
 }
 
+interface NewsRssItem {
+  id: string
+  title: string | null
+  link: string | null
+  description: string | null
+  content: string | null
+  pubDate: string | null
+  pubDateRaw: string | null
+  source: string | null
+  channelTitle: string | null
+  keywordsMatched: string[]
+}
+
 export default function Home() {
   const [data, setData] = useState<MockData | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
@@ -107,6 +125,11 @@ export default function Home() {
   const [stateFilter, setStateFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  const [newsItems, setNewsItems] = useState<NewsRssItem[]>([])
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [newsError, setNewsError] = useState<string | null>(null)
+  const [newsSearch, setNewsSearch] = useState('')
 
   // Load data from backend (MongoDB)
   useEffect(() => {
@@ -140,6 +163,48 @@ export default function Home() {
     loadData()
   }, [])
 
+  const loadNews = async () => {
+    try {
+      setNewsError(null)
+      setNewsLoading(true)
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '')
+      const url = `${apiBase}/api/news-rss?limit=200`
+
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Backend API failed (${res.status}) at ${url}`)
+      const json = await res.json()
+      const items = Array.isArray(json?.items) ? (json.items as NewsRssItem[]) : []
+      setNewsItems(items)
+    } catch (error) {
+      console.error('Failed to load news RSS:', error)
+      setNewsError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setNewsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadNews()
+  }, [])
+
+  const filteredNews = newsSearch.trim()
+    ? newsItems.filter((it) => {
+        const q = newsSearch.toLowerCase()
+        const hay = `${it.title || ''}\n${it.source || ''}\n${it.channelTitle || ''}\n${(it.keywordsMatched || []).join(
+          ',',
+        )}`.toLowerCase()
+        return hay.includes(q)
+      })
+    : newsItems
+
+  const formatNewsDate = (it: NewsRssItem) => {
+    const raw = it.pubDate || it.pubDateRaw
+    if (!raw) return null
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) return null
+    return d.toLocaleString()
+  }
+
   // Filter and search leads
   useEffect(() => {
     let filtered = leads
@@ -164,6 +229,10 @@ export default function Home() {
 
     setFilteredLeads(filtered.sort((a, b) => b.lead_score - a.lead_score))
   }, [searchQuery, urgencyFilter, stateFilter, leads])
+
+  const urgencyOptions = Array.from(
+    new Set(leads.map((l) => String(l.urgency || '').trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b))
 
   // Handle status change
   const handleStatusChange = (leadId: string, status: string, notes: string) => {
@@ -304,8 +373,16 @@ export default function Home() {
                 className="flex items-center gap-2 text-sm font-medium"
               >
                 <MessageCircle className="w-4 h-4 md:hidden" />
-                <span className="hidden sm:inline">New Leads Feed</span>
-                <span className="sm:hidden">Leads</span>
+                <span className="hidden sm:inline">Tender RSS Feed</span>
+                <span className="sm:hidden">Tender</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="news"
+                className="flex items-center gap-2 text-sm font-medium"
+              >
+                <Rss className="w-4 h-4 md:hidden" />
+                <span className="hidden sm:inline">News RSS Feed</span>
+                <span className="sm:hidden">News</span>
               </TabsTrigger>
               <TabsTrigger
                 value="dashboard"
@@ -347,9 +424,11 @@ export default function Home() {
                   className="h-10 px-3 border border-border rounded-lg bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                 >
                   <option value="all">All Urgency</option>
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
+                  {urgencyOptions.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
                 </select>
                 <select
                   value={stateFilter}
@@ -398,6 +477,138 @@ export default function Home() {
             )}
           </TabsContent>
 
+          {/* News RSS Feed Tab */}
+          <TabsContent value="news" className="space-y-6">
+            <Card className="border-border">
+              <CardContent className="p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="text-foreground font-semibold">News RSS Feed</p>
+                   
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="border-border bg-transparent"
+                      onClick={() => loadNews()}
+                      disabled={newsLoading}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-2">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search news by title/source/keyword..."
+                      value={newsSearch}
+                      onChange={(e) => setNewsSearch(e.target.value)}
+                      className="w-full h-10 pl-10 pr-4 border border-border rounded-lg bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                </div>
+
+                {newsError ? (
+                  <div className="border border-destructive/40 bg-destructive/5 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-foreground mb-1">Failed to load news</p>
+                    <p className="text-sm text-muted-foreground">{newsError}</p>
+                  </div>
+                ) : newsLoading ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">Loading news…</div>
+                ) : filteredNews.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    No matched news items found.
+                  </div>
+                ) : (
+                  <Accordion type="single" collapsible className="w-full">
+                    {filteredNews.map((it) => {
+                      const dt = formatNewsDate(it)
+                      const topLine = it.title || it.link || 'Untitled'
+                      return (
+                        <AccordionItem key={it.id} value={it.id} className="border-border">
+                          <AccordionTrigger className="hover:no-underline">
+                            <div className="flex flex-col gap-1 text-left pr-3">
+                              <div className="text-sm font-semibold text-foreground line-clamp-2">
+                                {topLine}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {it.source ? (
+                                  <span className="text-xs text-muted-foreground">{it.source}</span>
+                                ) : null}
+                                {dt ? <span className="text-xs text-muted-foreground">• {dt}</span> : null}
+                                {Array.isArray(it.keywordsMatched) && it.keywordsMatched.length ? (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {it.keywordsMatched.slice(0, 6).map((k) => (
+                                      <Badge
+                                        key={k}
+                                        variant="outline"
+                                        className="text-xs bg-card text-foreground border-border"
+                                      >
+                                        {k}
+                                      </Badge>
+                                    ))}
+                                    {it.keywordsMatched.length > 6 ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs bg-card text-muted-foreground border-border"
+                                      >
+                                        +{it.keywordsMatched.length - 6}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="text-sm">
+                            <div className="space-y-3">
+                              {it.description ? (
+                                <div>
+                                  <p className="text-xs text-muted-foreground font-medium mb-1">Description</p>
+                                  <p className="text-sm text-foreground whitespace-pre-line">{it.description}</p>
+                                </div>
+                              ) : null}
+
+                              {it.content && it.content !== it.description ? (
+                                <div>
+                                  <p className="text-xs text-muted-foreground font-medium mb-1">Content</p>
+                                  <p className="text-sm text-foreground whitespace-pre-line">{it.content}</p>
+                                </div>
+                              ) : null}
+
+                              <div className="flex flex-wrap items-center gap-2 pt-2">
+                                {it.link ? (
+                                  <Button asChild className="h-8" variant="outline">
+                                    <a href={it.link} target="_blank" rel="noreferrer">
+                                      <ExternalLink className="w-4 h-4 mr-2" />
+                                      Open article
+                                    </a>
+                                  </Button>
+                                ) : null}
+                                {it.feedUrl ? (
+                                  <Button asChild className="h-8" variant="ghost">
+                                    <a href={it.feedUrl} target="_blank" rel="noreferrer" className="text-xs">
+                                      View feed
+                                    </a>
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )
+                    })}
+                  </Accordion>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
             <ExecutiveDashboard metrics={data.dashboard_metrics} />
@@ -428,12 +639,9 @@ export default function Home() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xl">
-                            {lead.urgency === 'High' ? '🔴' : lead.urgency === 'Medium' ? '🟡' : '🟢'}
-                          </span>
                           <div className="flex-1">
                             <p className="font-semibold text-foreground text-sm">
-                              High-Intent Lead Detected
+                              Lead Alert
                             </p>
                             <p className="text-xs text-muted-foreground">
                               New business opportunity
@@ -508,10 +716,10 @@ export default function Home() {
                     </div>
                     <div className="pt-3 border-t border-border">
                       <p className="text-xs text-muted-foreground font-medium mb-1">
-                        High Urgency
+                        Urgency Filtered
                       </p>
-                      <p className="text-2xl font-bold text-destructive">
-                        {filteredLeads.filter((l) => l.urgency === 'High').length}
+                      <p className="text-2xl font-bold text-foreground">
+                        {urgencyFilter === 'all' ? 'All' : urgencyFilter}
                       </p>
                     </div>
                   </CardContent>

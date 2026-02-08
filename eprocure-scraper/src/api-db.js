@@ -4,6 +4,7 @@ let _connectPromise = null;
 let _tenderModel = null;
 let _t247TenderModel = null;
 let _officerModel = null;
+let _newsRssModel = null;
 
 async function connect() {
   if (mongoose.connection?.readyState === 1) return mongoose;
@@ -151,10 +152,56 @@ export async function getOfficerModel() {
   return _officerModel;
 }
 
+/**
+ * News RSS items ingested by src/rss-index.js into collection "news_rss" (default).
+ * Only matched items are expected, but the API can also filter out empty keywordsMatched.
+ */
+export async function getNewsRssModel() {
+  if (_newsRssModel) return _newsRssModel;
+  await connect();
+
+  const collectionName = process.env.NEWS_RSS_COLLECTION || "news_rss";
+  const modelName = `NewsRss__${collectionName.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+
+  if (mongoose.models[modelName]) {
+    _newsRssModel = mongoose.models[modelName];
+    return _newsRssModel;
+  }
+
+  const { Schema } = mongoose;
+  const schema = new Schema(
+    {
+      dedupeKey: { type: String, required: true },
+      title: { type: String, default: null },
+      link: { type: String, default: null },
+      guid: { type: String, default: null },
+      description: { type: String, default: null },
+      content: { type: String, default: null },
+      pubDate: { type: Date, default: null },
+      pubDateRaw: { type: String, default: null },
+      source: { type: String, default: null },
+      feedUrl: { type: String, default: null },
+      channelTitle: { type: String, default: null },
+      keywordsMatched: { type: [String], default: [] },
+      createdAt: { type: Date, default: Date.now },
+      updatedAt: { type: Date, default: Date.now },
+    },
+    { strict: false, minimize: false }
+  );
+
+  schema.index({ dedupeKey: 1 }, { unique: true, name: "uniq_dedupeKey" });
+  schema.index({ pubDate: -1 }, { name: "pubDate_desc" });
+  schema.index({ updatedAt: -1 }, { name: "updatedAt_desc" });
+
+  _newsRssModel = mongoose.model(modelName, schema, collectionName);
+  return _newsRssModel;
+}
+
 export async function closeDb() {
   _tenderModel = null;
   _t247TenderModel = null;
   _officerModel = null;
+  _newsRssModel = null;
   _connectPromise = null;
   if (mongoose.connection?.readyState) {
     await mongoose.disconnect();

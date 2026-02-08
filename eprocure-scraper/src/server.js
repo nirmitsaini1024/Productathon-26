@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import cors from "cors";
 import express from "express";
-import { getOfficerModel, getT247TenderModel, getTenderModel } from "./api-db.js";
+import { getNewsRssModel, getOfficerModel, getT247TenderModel, getTenderModel } from "./api-db.js";
 import { extractStateNameFromSiteLocation, lookupStateByName, STATES } from "./state-map.js";
 import { searchTender247 } from "./t247-client.js";
 import { KEYWORDS } from "./keywords.js";
@@ -221,6 +221,57 @@ app.get("/api/leads", async (req, res) => {
     res.json({ leads, dashboard_metrics });
   } catch (err) {
     res.status(500).json({ error: err?.message ?? String(err) });
+  }
+});
+
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+app.get("/api/news-rss", async (req, res) => {
+  try {
+    const limit = clamp(Number(req.query.limit ?? 100), 1, 500);
+    const q = String(req.query.q ?? "").trim();
+
+    const News = await getNewsRssModel();
+
+    /** @type {any} */
+    const filter = {
+      // Safety: older runs may have inserted docs with empty keywordsMatched; UI wants only matched.
+      keywordsMatched: { $exists: true, $ne: [] },
+    };
+
+    if (q) {
+      const re = new RegExp(escapeRegex(q), "i");
+      filter.$or = [{ title: re }, { description: re }, { content: re }, { source: re }, { channelTitle: re }];
+    }
+
+    const docs = await News.find(filter)
+      .sort({ pubDate: -1, updatedAt: -1, createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const items = docs.map((d) => ({
+      id: String(d._id),
+      dedupeKey: d.dedupeKey ?? null,
+      title: d.title ?? null,
+      link: d.link ?? null,
+      guid: d.guid ?? null,
+      description: d.description ?? null,
+      content: d.content ?? null,
+      pubDate: d.pubDate ?? null,
+      pubDateRaw: d.pubDateRaw ?? null,
+      source: d.source ?? null,
+      feedUrl: d.feedUrl ?? null,
+      channelTitle: d.channelTitle ?? null,
+      keywordsMatched: Array.isArray(d.keywordsMatched) ? d.keywordsMatched : [],
+      updatedAt: d.updatedAt ?? null,
+      createdAt: d.createdAt ?? null,
+    }));
+
+    return res.json({ items });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message ?? String(err) });
   }
 });
 
