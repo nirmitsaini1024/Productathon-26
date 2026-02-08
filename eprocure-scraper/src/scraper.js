@@ -1,7 +1,7 @@
 import axios from "axios";
 import { load } from "cheerio";
 import qs from "qs";
-import { parseTenderList } from "./parser.js";
+import { parseTenderList, parseTenderDetail } from "./parser.js";
 import { absUrl, jitter, normalizeSpace, sleep } from "./utils.js";
 
 const BASE_URL = "https://eprocure.gov.in/eprocure/app";
@@ -276,12 +276,15 @@ async function submitHomeTenderSearch(client, homeHtml, keyword) {
   return res.data;
 }
 
-export async function scrapeKeyword(keyword) {
+export async function scrapeKeyword(keyword, options = {}) {
+  const { scrapeDetails = true, downloadDocuments = false, outputDir = "output" } = options;
   const client = createHttpClient();
 
   // Step 1: Load homepage (sets initial session cookies)
   const homeRes = await httpGetWithRetry(client, BASE_URL);
   await sleep(jitter(900, 0.3));
+
+  let tenders = [];
 
   // Preferred: Advanced Search (richer filtering), but it can be captcha-gated.
   try {
@@ -319,15 +322,48 @@ export async function scrapeKeyword(keyword) {
       throw e;
     }
 
-    return parseTenderList(res.data, keyword);
+    tenders = parseTenderList(res.data, keyword);
   } catch (err) {
     // Fallback: home tender search (observed to work without captcha more often).
     if (err?.code === "CAPTCHA" || /captcha/i.test(String(err?.message ?? ""))) {
       const html = await submitHomeTenderSearch(client, homeRes.data, keyword);
-      return parseTenderList(html, keyword);
+      tenders = parseTenderList(html, keyword);
+    } else {
+      throw err;
     }
-    throw err;
   }
+
+  // Step 2: Scrape details for each tender if requested
+  if (scrapeDetails && tenders.length > 0) {
+    console.log(`  Fetching details for ${tenders.length} tenders...`);
+    
+    for (let i = 0; i < tenders.length; i++) {
+      const tender = tenders[i];
+      
+      try {
+        // Add a small delay between detail requests to be polite
+        if (i > 0) {
+          await sleep(jitter(2000, 0.3));
+        }
+        
+        // Fetch the detail page
+        const detailRes = await httpGetWithRetry(client, tender.detailUrl);
+        
+        // Parse the detail page
+        const details = parseTenderDetail(detailRes.data);
+        
+        // Merge details into the tender object
+        Object.assign(tender, details);
+        
+        console.log(`    [${i + 1}/${tenders.length}] ${tender.reference || tender.title?.substring(0, 50)}`);
+      } catch (err) {
+        console.error(`    [${i + 1}/${tenders.length}] Failed to fetch details: ${err.message}`);
+        // Continue with other tenders even if one fails
+      }
+    }
+  }
+
+  return tenders;
 }
 
 
