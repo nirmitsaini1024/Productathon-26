@@ -8,7 +8,7 @@ import React, { useRef, useEffect, useState } from 'react';
 // ⚠️ IMPORTANT: Update this URL before deploying
 // For development: Use your local IP (e.g., http://192.168.1.x:3000)
 // For production: Use your deployed URL (e.g., https://hpcl.yourdomain.com)
-const DASHBOARD_URL = 'http://10.251.191.7:3000';
+const DASHBOARD_URL = 'http://10.211.221.7:3000';
 
 export default function App() {
   const webViewRef = useRef(null);

@@ -23,6 +23,22 @@ An **end-to-end sales intelligence platform** that automatically:
 
 ---
 
+## 🎥 Video Demo
+
+Watch the platform in action:
+
+[![Video Demo](https://img.shields.io/badge/Watch-Video%20Demo-red?style=for-the-badge&logo=googledrive)](https://drive.google.com/file/d/12ZkTqe-0asqIQXR_kbaR3tIeYQOROSsY/view?usp=sharing)
+
+**[📺 Click here to view the full demo video](https://drive.google.com/file/d/12ZkTqe-0asqIQXR_kbaR3tIeYQOROSsY/view?usp=sharing)**
+
+See how the platform:
+- Automatically discovers and scores tender leads
+- Routes opportunities to sales officers
+- Enables instant WhatsApp/email outreach
+- Provides real-time analytics and team management
+
+---
+
 ## ✨ Key Features
 
 ### 🔍 **Intelligent Lead Discovery**
