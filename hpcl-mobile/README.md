@@ -1,5 +1,7 @@
 # 📱 HPCL Sales Intelligence - Mobile App
 
+**Team:** 10xdevs
+
 > Native Android/iOS mobile application for B2B sales intelligence and lead management
 
 **React Native (Expo) wrapper that brings the full HPCL Sales Intelligence platform to mobile devices with native performance and offline capabilities.**
