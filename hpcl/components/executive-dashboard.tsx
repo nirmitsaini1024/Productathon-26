@@ -29,6 +29,7 @@ import {
 interface DashboardMetrics {
   this_week: {
     leads_discovered: number
+    leads_assigned: number
     leads_contacted: number
     leads_accepted: number
     leads_converted: number
@@ -37,6 +38,7 @@ interface DashboardMetrics {
   }
   this_month: {
     leads_discovered: number
+    leads_assigned: number
     leads_contacted: number
     leads_accepted: number
     leads_converted: number
@@ -86,6 +88,11 @@ export function ExecutiveDashboard({ metrics, assignments, totalLeads }: Executi
       stage: 'Discovered',
       value: metrics.this_month.leads_discovered,
       fill: '#1E3A5F',
+    },
+    {
+      stage: 'Assigned',
+      value: metrics.this_month.leads_assigned,
+      fill: '#8B5CF6',
     },
     {
       stage: 'Contacted',
@@ -477,28 +484,34 @@ export function ExecutiveDashboard({ metrics, assignments, totalLeads }: Executi
           <CardTitle className="text-lg">Monthly Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-medium">Total Discovered</p>
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-xs text-muted-foreground font-medium">Discovered</p>
+              <p className="text-2xl font-bold" style={{ color: '#1E3A5F' }}>
                 {metrics.this_month.leads_discovered}
               </p>
             </div>
             <div className="space-y-1">
+              <p className="text-xs text-muted-foreground font-medium">Assigned</p>
+              <p className="text-2xl font-bold" style={{ color: '#8B5CF6' }}>
+                {metrics.this_month.leads_assigned}
+              </p>
+            </div>
+            <div className="space-y-1">
               <p className="text-xs text-muted-foreground font-medium">Contacted</p>
-              <p className="text-2xl font-bold text-accent">
+              <p className="text-2xl font-bold" style={{ color: '#1B8A8A' }}>
                 {metrics.this_month.leads_contacted}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground font-medium">Accepted</p>
-              <p className="text-2xl font-bold text-green-700">
+              <p className="text-2xl font-bold" style={{ color: '#0F6B3C' }}>
                 {metrics.this_month.leads_accepted}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground font-medium">Converted</p>
-              <p className="text-2xl font-bold text-amber-700">
+              <p className="text-2xl font-bold" style={{ color: '#FFA500' }}>
                 {metrics.this_month.leads_converted}
               </p>
             </div>

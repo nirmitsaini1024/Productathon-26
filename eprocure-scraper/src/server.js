@@ -121,6 +121,10 @@ function toLead(t) {
   const title = String(t.title || t.workTitle || "Tender Opportunity");
   const summary = String(t.workDescription || title);
 
+  // Migrate old "new" status to "discovered"
+  let status = t.status || "discovered";
+  if (status === "new") status = "discovered";
+
   return {
     id,
     company_name: company,
@@ -158,7 +162,7 @@ function toLead(t) {
     },
     sales_owner: "Unassigned",
     field_officer: "Unassigned",
-    status: "new",
+    status,
     notes: "",
     created_at: published.toISOString().slice(0, 10),
   };
@@ -185,6 +189,10 @@ function toLeadT247(t) {
   const website = "https://tender247.com";
   const sourceUrl = website;
   const title = String(t.requirement_workbrief || "Tender Opportunity");
+
+  // Migrate old "new" status to "discovered"
+  let status = t.status || "discovered";
+  if (status === "new") status = "discovered";
 
   return {
     id,
@@ -223,7 +231,7 @@ function toLeadT247(t) {
     },
     sales_owner: "Unassigned",
     field_officer: "Unassigned",
-    status: "new",
+    status,
     notes: "",
     created_at: published.toISOString().slice(0, 10),
   };
@@ -231,6 +239,9 @@ function toLeadT247(t) {
 
 function computeMetricsFromLeads(leads) {
   const total = leads.length;
+  const discovered = leads.filter((l) => l.status === "discovered").length;
+  const assigned = leads.filter((l) => l.status === "assigned").length;
+  const contacted = leads.filter((l) => l.status === "contacted").length;
   const accepted = leads.filter((l) => l.status === "accepted").length;
   const converted = leads.filter((l) => l.status === "converted").length;
   const avg = total ? Math.round(leads.reduce((sum, l) => sum + (Number(l.lead_score) || 0), 0) / total) : 0;
@@ -294,16 +305,18 @@ function computeMetricsFromLeads(leads) {
 
   return {
     this_week: {
-      leads_discovered: total,
-      leads_contacted: 0,
+      leads_discovered: discovered,
+      leads_assigned: assigned,
+      leads_contacted: contacted,
       leads_accepted: accepted,
       leads_converted: converted,
       conversion_rate: conversionRate,
       avg_lead_score: avg,
     },
     this_month: {
-      leads_discovered: total,
-      leads_contacted: 0,
+      leads_discovered: discovered,
+      leads_assigned: assigned,
+      leads_contacted: contacted,
       leads_accepted: accepted,
       leads_converted: converted,
       conversion_rate: conversionRate,
@@ -1025,6 +1038,19 @@ app.post("/api/email/send", async (req, res) => {
       `[email] sent ts=${ts} to=${String(to ?? "")} subject=${String(subject ?? "")} id=${String(emailId)}`
     );
 
+    // Update tender status to "contacted" if lead_id is provided
+    if (lead && lead.id) {
+      try {
+        const Tender = await getTenderModel();
+        await Tender.updateOne(
+          { key: lead.id },
+          { $set: { status: "contacted", updatedAt: new Date() } }
+        );
+      } catch (updateErr) {
+        console.error(`[email] Failed to update status for lead ${lead.id}:`, updateErr);
+      }
+    }
+
     return res.json({ ok: true, id: emailId });
   } catch (err) {
     const ts = new Date().toISOString();
@@ -1201,6 +1227,13 @@ app.post("/api/assignments", async (req, res) => {
       { upsert: true, new: true, runValidators: true }
     ).lean();
 
+    // Update tender status to "assigned"
+    const Tender = await getTenderModel();
+    await Tender.updateOne(
+      { key: lead_id },
+      { $set: { status: "assigned", updatedAt: new Date() } }
+    );
+
     return res.json({ ok: true, assignment });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
@@ -1216,7 +1249,95 @@ app.delete("/api/assignments/:leadId", async (req, res) => {
     const deleted = await Assignment.findOneAndDelete({ lead_id: leadId }).lean();
     if (!deleted) return res.status(404).json({ ok: false, error: "Assignment not found" });
 
+    // Optionally revert tender status back to "discovered" when unassigned
+    const Tender = await getTenderModel();
+    await Tender.updateOne(
+      { key: leadId },
+      { $set: { status: "discovered", updatedAt: new Date() } }
+    );
+
     return res.json({ ok: true, deleted });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+// ========== Status update endpoint ==========
+
+app.patch("/api/leads/:leadId/status", async (req, res) => {
+  try {
+    const leadId = String(req.params.leadId || "").trim();
+    const status = String(req.body?.status || "").trim();
+
+    if (!leadId) return res.status(400).json({ ok: false, error: "leadId is required" });
+    if (!status) return res.status(400).json({ ok: false, error: "status is required" });
+
+    const validStatuses = ["discovered", "assigned", "contacted", "accepted", "rejected", "converted"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` 
+      });
+    }
+
+    const Tender = await getTenderModel();
+    const updated = await Tender.findOneAndUpdate(
+      { key: leadId },
+      { $set: { status, updatedAt: new Date() } },
+      { new: true }
+    ).lean();
+
+    if (!updated) return res.status(404).json({ ok: false, error: "Lead not found" });
+
+    return res.json({ ok: true, lead: { id: updated.key, status: updated.status } });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+// ========== Migration/Debug endpoint ==========
+
+app.post("/api/migrate/status", async (req, res) => {
+  try {
+    const Tender = await getTenderModel();
+    
+    // Migrate "new" status to "discovered"
+    const result = await Tender.updateMany(
+      { $or: [{ status: "new" }, { status: { $exists: false } }] },
+      { $set: { status: "discovered", updatedAt: new Date() } }
+    );
+
+    return res.json({ 
+      ok: true, 
+      migrated: result.modifiedCount,
+      message: `Migrated ${result.modifiedCount} leads from "new" or null status to "discovered"` 
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.get("/api/debug/status-counts", async (req, res) => {
+  try {
+    const Tender = await getTenderModel();
+    const T247 = await getT247TenderModel();
+    
+    const [eprocureCounts, t247Counts] = await Promise.all([
+      Tender.aggregate([
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]),
+      T247.aggregate([
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ])
+    ]);
+
+    return res.json({ 
+      ok: true, 
+      eprocure: eprocureCounts,
+      tender247: t247Counts
+    });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
   }

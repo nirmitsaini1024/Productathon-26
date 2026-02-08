@@ -43,6 +43,7 @@ export async function getTenderModel() {
       detailUrl: { type: String, default: null },
       keywords: { type: [String], default: [] },
       lastKeyword: { type: String, default: null },
+      status: { type: String, default: "discovered", enum: ["discovered", "assigned", "contacted", "accepted", "rejected", "converted"] },
       createdAt: { type: Date, default: Date.now },
       updatedAt: { type: Date, default: Date.now },
     },
@@ -51,6 +52,7 @@ export async function getTenderModel() {
 
   schema.index({ key: 1 }, { unique: true, name: "uniq_key" });
   schema.index({ updatedAt: -1 }, { name: "updatedAt_desc" });
+  schema.index({ status: 1 }, { name: "status" });
 
   _tenderModel = mongoose.model(modelName, schema, collectionName);
   return _tenderModel;
