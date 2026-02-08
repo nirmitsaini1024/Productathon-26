@@ -49,7 +49,7 @@
 
 #### Tender Type & Classification
 - `tenderType` - Open/Limited Tender
-- `formOfContract` - Works/Goods/Services
+- `formOfContract` - Works/Goods/Services/Percentage
 - `tenderCategory` - Category classification
 - `productCategory` - Product category (e.g., Civil Works)
 - `subCategory` - Subcategory (e.g., Road Work)
@@ -57,18 +57,36 @@
 - `withdrawalAllowed` - Can bids be withdrawn
 - `numberOfCovers` - Number of bid covers
 
+#### Evaluation & Bidding Rules
+- `generalTechnicalEvaluationAllowed` - Is GTE allowed
+- `itemWiseTechnicalEvaluationAllowed` - Is item-wise evaluation allowed
+- `allowTwoStageBidding` - Two stage bidding permitted
+- `shouldAllowNDATender` - NDA tender allowed
+- `allowPreferentialBidder` - Preferential bidder allowed
+
+#### Payment & Currency
+- `paymentMode` - Online/Offline
+- `isMultiCurrencyAllowedForBOQ` - Multi-currency for BOQ
+- `isMultiCurrencyAllowedForFee` - Multi-currency for fees
+
 #### Financial Details
 - `tenderValue` - Estimated tender value
 - `tenderFee` - Fee for tender document
 - `feePayableTo` - Fee payable to entity
 - `feePayableAt` - Fee payment location
+- `tenderFeeExemptionAllowed` - Fee exemption allowed
 - `emdAmount` - Earnest Money Deposit amount
+- `emdFeeType` - Fixed/Percentage
+- `emdPercentage` - EMD percentage (if applicable)
 - `emdPayableTo` - EMD payable to entity
 - `emdPayableAt` - EMD payment location
+- `emdExemptionAllowed` - EMD exemption allowed
 
 #### Work Details
 - `workTitle` - Full work title
 - `workDescription` - Detailed description
+- `ndaPreQualification` - NDA/Pre-qualification requirements
+- `independentExternalMonitorRemarks` - External monitor remarks
 - `workLocation` - Work location
 - `pincode` - Location pincode
 - `bidValidityDays` - Bid validity period
@@ -85,6 +103,7 @@
 - `clarificationEndDate` - Clarification period end
 - `preBidMeetingDate` - Pre-bid meeting date
 - `preBidMeetingPlace` - Pre-bid meeting location
+- `preBidMeetingAddress` - Pre-bid meeting address
 - `bidOpeningPlace` - Bid opening location
 
 #### Administrative

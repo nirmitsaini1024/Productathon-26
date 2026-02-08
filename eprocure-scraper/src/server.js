@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import cors from "cors";
 import express from "express";
-import { getNewsRssModel, getOfficerModel, getT247TenderModel, getTenderModel } from "./api-db.js";
+import { getNewsRssModel, getOfficerModel, getT247TenderModel, getTenderModel, getAssignmentModel } from "./api-db.js";
 import { extractStateNameFromSiteLocation, lookupStateByName, STATES } from "./state-map.js";
 import { searchTender247 } from "./t247-client.js";
 import { KEYWORDS } from "./keywords.js";
@@ -1154,6 +1154,67 @@ app.delete("/api/officers/:id", async (req, res) => {
     const Officer = await getOfficerModel();
     const deleted = await Officer.findByIdAndDelete(id).lean();
     if (!deleted) return res.status(404).json({ ok: false, error: "Officer not found" });
+
+    return res.json({ ok: true, deleted });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.get("/api/assignments", async (_req, res) => {
+  try {
+    const Assignment = await getAssignmentModel();
+    const items = await Assignment.find({}).lean();
+    return res.json({ ok: true, items });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.post("/api/assignments", async (req, res) => {
+  try {
+    const body = req.body;
+    const lead_id = String(body?.lead_id ?? "").trim();
+    const officer_id = String(body?.officer_id ?? "").trim();
+
+    if (!lead_id) return res.status(400).json({ ok: false, error: "lead_id is required" });
+    if (!officer_id) return res.status(400).json({ ok: false, error: "officer_id is required" });
+
+    // Verify officer exists
+    const Officer = await getOfficerModel();
+    const officer = await Officer.findById(officer_id).lean();
+    if (!officer) return res.status(404).json({ ok: false, error: "Officer not found" });
+
+    const Assignment = await getAssignmentModel();
+    
+    // Upsert: if assignment exists, update it; otherwise create new
+    const assignment = await Assignment.findOneAndUpdate(
+      { lead_id },
+      {
+        lead_id,
+        officer_id,
+        officer_name: officer.name,
+        officer_email: officer.email,
+        assigned_at: new Date(),
+        assigned_by: "system",
+      },
+      { upsert: true, new: true, runValidators: true }
+    ).lean();
+
+    return res.json({ ok: true, assignment });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.delete("/api/assignments/:leadId", async (req, res) => {
+  try {
+    const leadId = String(req.params.leadId || "").trim();
+    if (!leadId) return res.status(400).json({ ok: false, error: "leadId is required" });
+
+    const Assignment = await getAssignmentModel();
+    const deleted = await Assignment.findOneAndDelete({ lead_id: leadId }).lean();
+    if (!deleted) return res.status(404).json({ ok: false, error: "Assignment not found" });
 
     return res.json({ ok: true, deleted });
   } catch (err) {

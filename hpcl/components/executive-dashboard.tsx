@@ -65,11 +65,21 @@ interface DashboardMetrics {
   }>
 }
 
-interface ExecutiveDashboardProps {
-  metrics: DashboardMetrics
+interface Assignment {
+  lead_id: string
+  officer_id: string
+  officer_name: string
+  officer_email: string
+  assigned_at: string
 }
 
-export function ExecutiveDashboard({ metrics }: ExecutiveDashboardProps) {
+interface ExecutiveDashboardProps {
+  metrics: DashboardMetrics
+  assignments: Assignment[]
+  totalLeads: number
+}
+
+export function ExecutiveDashboard({ metrics, assignments, totalLeads }: ExecutiveDashboardProps) {
   // Funnel data
   const funnelData = [
     {
@@ -112,6 +122,29 @@ export function ExecutiveDashboard({ metrics }: ExecutiveDashboardProps) {
     region: r.region,
     leads: r.count,
   }))
+
+  // Assignment distribution by officer
+  const assignmentsByOfficer = assignments.reduce((acc, assignment) => {
+    const name = assignment.officer_name
+    acc[name] = (acc[name] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const assignmentColors = [
+    '#1E3A5F', '#1B8A8A', '#0F6B3C', '#FFA500', '#8B5CF6', 
+    '#EC4899', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'
+  ]
+
+  const assignedCount = assignments.length
+  const unassignedCount = totalLeads - assignedCount
+
+  const assignmentData = [
+    ...Object.entries(assignmentsByOfficer).map(([name, count]) => ({
+      name,
+      value: count,
+    })),
+    ...(unassignedCount > 0 ? [{ name: 'Unassigned', value: unassignedCount }] : []),
+  ]
 
   // State tile heatmap (India-style)
   const stateRows = (metrics.by_state || []).filter((s) => s && s.state)
@@ -282,8 +315,52 @@ export function ExecutiveDashboard({ metrics }: ExecutiveDashboardProps) {
         </Card>
       </div>
 
-      {/* Sector Distribution & Region Heatmap */}
+      {/* Assignments & Sector Distribution */}
       <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+        {/* Officer Assignments */}
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Lead Assignments</CardTitle>
+            <p className="text-sm text-muted-foreground">By Officer</p>
+          </CardHeader>
+          <CardContent>
+            {assignmentData.length === 0 ? (
+              <div className="flex items-center justify-center h-[240px]">
+                <p className="text-sm text-muted-foreground">No leads assigned yet</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={assignmentData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${value}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {assignmentData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.name === 'Unassigned' ? '#94a3b8' : assignmentColors[index % assignmentColors.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(0, 0%, 100%)',
+                      border: '1px solid hsl(210, 12%, 88%)',
+                      borderRadius: '0.5rem',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Sector Distribution */}
         <Card className="border-border">
           <CardHeader className="pb-3">
@@ -321,7 +398,10 @@ export function ExecutiveDashboard({ metrics }: ExecutiveDashboardProps) {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+      </div>
 
+      {/* Geography Heatmap */}
+      <div className="grid md:grid-cols-1 gap-4 md:gap-6">
         {/* Geography Heatmap (States) */}
         <Card className="border-border">
           <CardHeader className="pb-3">

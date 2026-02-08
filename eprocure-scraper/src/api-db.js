@@ -5,6 +5,7 @@ let _tenderModel = null;
 let _t247TenderModel = null;
 let _officerModel = null;
 let _newsRssModel = null;
+let _assignmentModel = null;
 
 async function connect() {
   if (mongoose.connection?.readyState === 1) return mongoose;
@@ -197,11 +198,49 @@ export async function getNewsRssModel() {
   return _newsRssModel;
 }
 
+/**
+ * Lead-to-Officer assignments for tracking which officer is handling which lead.
+ * Default: assignments
+ */
+export async function getAssignmentModel() {
+  if (_assignmentModel) return _assignmentModel;
+  await connect();
+
+  const collectionName = process.env.ASSIGNMENTS_MONGO_COLLECTION || "assignments";
+  const modelName = `Assignment__${collectionName.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+
+  if (mongoose.models[modelName]) {
+    _assignmentModel = mongoose.models[modelName];
+    return _assignmentModel;
+  }
+
+  const { Schema } = mongoose;
+  const schema = new Schema(
+    {
+      lead_id: { type: String, required: true },
+      officer_id: { type: String, required: true },
+      officer_name: { type: String, required: true },
+      officer_email: { type: String, required: true },
+      assigned_at: { type: Date, default: Date.now },
+      assigned_by: { type: String, default: "system" },
+    },
+    { strict: true, minimize: true }
+  );
+
+  schema.index({ lead_id: 1 }, { unique: true, name: "uniq_lead_id" });
+  schema.index({ officer_id: 1, assigned_at: -1 }, { name: "officer_assignedAt" });
+  schema.index({ assigned_at: -1 }, { name: "assignedAt_desc" });
+
+  _assignmentModel = mongoose.model(modelName, schema, collectionName);
+  return _assignmentModel;
+}
+
 export async function closeDb() {
   _tenderModel = null;
   _t247TenderModel = null;
   _officerModel = null;
   _newsRssModel = null;
+  _assignmentModel = null;
   _connectPromise = null;
   if (mongoose.connection?.readyState) {
     await mongoose.disconnect();

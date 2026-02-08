@@ -115,6 +115,14 @@ interface NewsRssItem {
   keywordsMatched: string[]
 }
 
+interface Assignment {
+  lead_id: string
+  officer_id: string
+  officer_name: string
+  officer_email: string
+  assigned_at: string
+}
+
 export default function Home() {
   const [data, setData] = useState<MockData | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
@@ -130,6 +138,32 @@ export default function Home() {
   const [newsLoading, setNewsLoading] = useState(false)
   const [newsError, setNewsError] = useState<string | null>(null)
   const [newsSearch, setNewsSearch] = useState('')
+
+  const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [assignmentsMap, setAssignmentsMap] = useState<Map<string, Assignment>>(new Map())
+
+  const loadAssignments = async () => {
+    try {
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '')
+      const url = `${apiBase}/api/assignments`
+
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`Failed to load assignments (${res.status})`)
+      const json = await res.json()
+
+      const items = Array.isArray(json?.items) ? (json.items as Assignment[]) : []
+      setAssignments(items)
+      
+      // Create a map for quick lookup
+      const map = new Map<string, Assignment>()
+      items.forEach((assignment) => {
+        map.set(assignment.lead_id, assignment)
+      })
+      setAssignmentsMap(map)
+    } catch (error) {
+      console.error('Failed to load assignments:', error)
+    }
+  }
 
   // Load data from backend (MongoDB)
   useEffect(() => {
@@ -161,6 +195,7 @@ export default function Home() {
     }
 
     loadData()
+    loadAssignments()
   }, [])
 
   const loadNews = async () => {
@@ -470,7 +505,9 @@ export default function Home() {
                   <LeadCard
                     key={lead.id}
                     {...lead}
+                    assignment={assignmentsMap.get(lead.id) || null}
                     onViewDossier={(id) => setSelectedLeadId(id)}
+                    onAssignmentChange={loadAssignments}
                   />
                 ))}
               </div>
@@ -611,7 +648,11 @@ export default function Home() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-6">
-            <ExecutiveDashboard metrics={data.dashboard_metrics} />
+            <ExecutiveDashboard 
+              metrics={data.dashboard_metrics} 
+              assignments={assignments}
+              totalLeads={leads.length}
+            />
           </TabsContent>
 
           {/* Notifications Tab */}

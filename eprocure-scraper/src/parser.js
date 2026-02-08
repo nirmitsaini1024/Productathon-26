@@ -90,35 +90,71 @@ export function parseTenderDetail(html) {
     const value = normalizeSpace($field.text());
     if (!value || value === "NA" || value === "na") return;
 
-    // Map specific fields based on exact label matches
-    if (lowerLabel.includes("tender reference number")) {
+    // === BASIC DETAILS ===
+    if (lowerLabel.includes("organisation chain")) {
+      details.organisationChain = value;
+    } else if (lowerLabel.includes("tender reference number")) {
       details.tenderReferenceNumber = value;
     } else if (lowerLabel.includes("tender id")) {
       details.tenderId = value;
+    } else if (lowerLabel.includes("withdrawal allowed")) {
+      details.withdrawalAllowed = value;
     } else if (lowerLabel.includes("tender type")) {
       details.tenderType = value;
     } else if (lowerLabel.includes("form of contract")) {
       details.formOfContract = value;
     } else if (lowerLabel.includes("tender category")) {
       details.tenderCategory = value;
-    } else if (lowerLabel.includes("tender value in") || lowerLabel.includes("tender value")) {
-      details.tenderValue = value;
-    } else if (lowerLabel.includes("tender fee in") && !lowerLabel.includes("exemption")) {
+    } else if (lowerLabel.includes("no. of covers") || lowerLabel.includes("no of covers")) {
+      details.numberOfCovers = value;
+    } else if (lowerLabel.includes("general technical evaluation allowed")) {
+      details.generalTechnicalEvaluationAllowed = value;
+    } else if (lowerLabel.includes("itemwise technical evaluation allowed")) {
+      details.itemWiseTechnicalEvaluationAllowed = value;
+    } else if (lowerLabel.includes("payment mode")) {
+      details.paymentMode = value;
+    } else if (lowerLabel.includes("is multi currency allowed for boq")) {
+      details.isMultiCurrencyAllowedForBOQ = value;
+    } else if (lowerLabel.includes("is multi currency allowed for fee")) {
+      details.isMultiCurrencyAllowedForFee = value;
+    } else if (lowerLabel.includes("allow two stage bidding")) {
+      details.allowTwoStageBidding = value;
+    }
+    
+    // === TENDER FEE & EMD DETAILS ===
+    else if (lowerLabel.includes("tender fee in") && !lowerLabel.includes("exemption")) {
       details.tenderFee = value;
-    } else if (lowerLabel.includes("emd amount in") || (lowerLabel.includes("emd") && lowerLabel.includes("amount"))) {
-      details.emdAmount = value;
     } else if (lowerLabel.includes("fee payable to") && !details.feePayableTo) {
       details.feePayableTo = value;
     } else if (lowerLabel.includes("fee payable at") && !details.feePayableAt) {
       details.feePayableAt = value;
+    } else if (lowerLabel.includes("tender fee exemption allowed")) {
+      details.tenderFeeExemptionAllowed = value;
+    } else if (lowerLabel.includes("emd amount in") || (lowerLabel.includes("emd") && lowerLabel.includes("amount") && !lowerLabel.includes("exemption"))) {
+      details.emdAmount = value;
+    } else if (lowerLabel.includes("emd exemption allowed")) {
+      details.emdExemptionAllowed = value;
+    } else if (lowerLabel.includes("emd fee type")) {
+      details.emdFeeType = value;
+    } else if (lowerLabel.includes("emd percentage")) {
+      details.emdPercentage = value;
     } else if (lowerLabel.includes("emd payable to")) {
       details.emdPayableTo = value;
     } else if (lowerLabel.includes("emd payable at")) {
       details.emdPayableAt = value;
+    }
+    
+    // === WORK ITEM DETAILS ===
+    else if (lowerLabel === "title") {
+      details.workTitle = value;
     } else if (lowerLabel.includes("work description")) {
       details.workDescription = value;
-    } else if (lowerLabel === "title") {
-      details.workTitle = value;
+    } else if (lowerLabel.includes("nda/pre qualification") || lowerLabel.includes("nda / pre qualification")) {
+      details.ndaPreQualification = value;
+    } else if (lowerLabel.includes("independent external monitor") || lowerLabel.includes("remarks")) {
+      details.independentExternalMonitorRemarks = value;
+    } else if (lowerLabel.includes("tender value in") || (lowerLabel === "tender value")) {
+      details.tenderValue = value;
     } else if (lowerLabel.includes("product category")) {
       details.productCategory = value;
     } else if (lowerLabel.includes("sub category")) {
@@ -135,11 +171,20 @@ export function parseTenderDetail(html) {
       details.pincode = value;
     } else if (lowerLabel.includes("pre bid meeting place")) {
       details.preBidMeetingPlace = value;
+    } else if (lowerLabel.includes("pre bid meeting address")) {
+      details.preBidMeetingAddress = value;
     } else if (lowerLabel.includes("pre bid meeting date")) {
       details.preBidMeetingDate = value;
     } else if (lowerLabel.includes("bid opening place")) {
       details.bidOpeningPlace = value;
-    } else if (lowerLabel.includes("published date")) {
+    } else if (lowerLabel.includes("should allow nda tender")) {
+      details.shouldAllowNDATender = value;
+    } else if (lowerLabel.includes("allow preferential bidder")) {
+      details.allowPreferentialBidder = value;
+    }
+    
+    // === CRITICAL DATES ===
+    else if (lowerLabel.includes("published date")) {
       details.publishedDateFull = value;
     } else if (lowerLabel.includes("bid opening date")) {
       details.bidOpeningDateFull = value;
@@ -155,12 +200,6 @@ export function parseTenderDetail(html) {
       details.clarificationStartDate = value;
     } else if (lowerLabel.includes("clarification end date")) {
       details.clarificationEndDate = value;
-    } else if (lowerLabel.includes("organisation chain")) {
-      details.organisationChain = value;
-    } else if (lowerLabel.includes("withdrawal allowed")) {
-      details.withdrawalAllowed = value;
-    } else if (lowerLabel.includes("no. of covers") || lowerLabel.includes("no of covers")) {
-      details.numberOfCovers = value;
     }
   });
 

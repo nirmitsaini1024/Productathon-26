@@ -158,8 +158,8 @@ export async function persistTenders({ keyword, tenders }) {
     const key = tenderKey(t);
     if (!key) continue;
 
-    // Avoid letting the scraped "keyword" field overwrite multi-keyword state in DB.
-    const { keyword: _scrapedKeyword, keywords: _keywords, ...rest } = t || {};
+    // Avoid letting these fields conflict with explicit handling below.
+    const { keyword: _scrapedKeyword, keywords: _keywords, reference: _ref, detailUrl: _detailUrl, ...rest } = t || {};
 
     const update = insertOnly
       ? {
