@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
 import './globals.css'
+import { PwaRegister } from '@/components/pwa-register'
 
 const _geist = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
@@ -12,6 +13,11 @@ export const metadata: Metadata = {
   description: 'Enterprise-grade B2B Sales Intelligence platform for HPCL Direct Sales officers. Discover high-intent leads, analyze buying signals, and manage your sales pipeline with AI-powered insights.',
   keywords: ['B2B Sales', 'Lead Intelligence', 'HPCL', 'Sales CRM', 'Lead Scoring'],
   generator: 'v0.app',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/placeholder-logo.svg',
+    apple: '/placeholder-logo.svg',
+  },
   openGraph: {
     title: 'HPCL Direct Sales Intelligence',
     description: 'Empower your sales team with intelligent lead discovery and management',
@@ -34,7 +40,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <PwaRegister />
+        {children}
+      </body>
     </html>
   )
 }

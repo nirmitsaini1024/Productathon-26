@@ -1,0 +1,20 @@
+{
+  "name": "HPCL Direct Sales Intelligence",
+  "short_name": "HPCL Leads",
+  "description": "B2B Sales Intelligence platform for HPCL Direct Sales officers.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1E3A5F",
+  "icons": [
+    {
+      "src": "/placeholder-logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}
+
+
