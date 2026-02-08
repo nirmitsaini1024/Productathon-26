@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict, Any
 
 
 SuggestedAction = Literal["Call", "Email", "Schedule Meeting", "Send Proposal"]
@@ -133,52 +133,4 @@ class AIGeneratedLeadData(BaseModel):
 class RequestBody(BaseModel):
     """Input tender fields from eProcure portal"""
 
-    keyword: Optional[str] = Field(None, description="Search keyword")
-    publishedDate: Optional[str] = Field(None, description="Published date")
-    closingDate: Optional[str] = Field(None, description="Closing date")
-    openingDate: Optional[str] = Field(None, description="Opening date")
-    title: str = Field(..., description="Tender title")
-    workTitle: Optional[str] = Field(None, description="Work title")
-    workDescription: str = Field(..., description="Work description")
-    reference: Optional[str] = Field(None, description="Tender reference")
-    organisation: str = Field(..., description="Organization name")
-    organisationChain: Optional[str] = Field(None, description="Organization chain")
-    tenderReferenceNumber: str = Field(..., description="Tender reference number")
-    tenderId: str = Field(..., description="Tender ID")
-    withdrawalAllowed: Optional[str] = Field(None, description="Whether withdrawal is allowed")
-    tenderType: str = Field(..., description="Type of tender")
-    formOfContract: Optional[str] = Field(None, description="Form of contract")
-    tenderCategory: Optional[str] = Field(None, description="Tender category")
-    generalTechnicalEvaluationAllowed: Optional[str] = Field(None, description="General technical evaluation allowed")
-    itemWiseTechnicalEvaluationAllowed: Optional[str] = Field(None, description="Item wise technical evaluation allowed")
-    paymentMode: Optional[str] = Field(None, description="Payment mode")
-    isMultiCurrencyAllowedForBOQ: Optional[str] = Field(None, description="Is multi-currency allowed for BOQ")
-    isMultiCurrencyAllowedForFee: Optional[str] = Field(None, description="Is multi-currency allowed for fee")
-    allowTwoStageBidding: Optional[str] = Field(None, description="Allow two stage bidding")
-    tenderFee: Optional[str] = Field(None, description="Tender fee")
-    feePayableTo: Optional[str] = Field(None, description="Fee payable to")
-    feePayableAt: Optional[str] = Field(None, description="Fee payable at")
-    tenderFeeExemptionAllowed: Optional[str] = Field(None, description="Tender fee exemption allowed")
-    emdAmount: str = Field(..., description="EMD amount")
-    emdExemptionAllowed: Optional[str] = Field(None, description="EMD exemption allowed")
-    emdFeeType: Optional[str] = Field(None, description="EMD fee type")
-    emdPayableTo: Optional[str] = Field(None, description="EMD payable to")
-    emdPayableAt: Optional[str] = Field(None, description="EMD payable at")
-    workTitle: Optional[str] = Field(None, description="Work title")
-    workDescription: str = Field(..., description="Work description")
-    ndaPreQualification: Optional[str] = Field(None, description="NDA pre-qualification")
-    tenderValue: Optional[str] = Field(None, description="Tender value")
-    productCategory: str = Field(..., description="Product category")
-    contractType: Optional[str] = Field(None, description="Contract type")
-    bidValidityDays: Optional[str] = Field(None, description="Bid validity in days")
-    periodOfWorkDays: str = Field(..., description="Period of work in days")
-    workLocation: Optional[str] = Field(None, description="Work location")
-    pincode: Optional[str] = Field(None, description="Pincode")
-    bidOpeningPlace: Optional[str] = Field(None, description="Bid opening place")
-    shouldAllowNDATender: Optional[str] = Field(None, description="Should allow NDA tender")
-    allowPreferentialBidder: Optional[str] = Field(None, description="Allow preferential bidder")
-    publishedDateFull: Optional[str] = Field(None, description="Full published date")
-    bidOpeningDateFull: Optional[str] = Field(None, description="Full bid opening date")
-    bidSubmissionStartDate: Optional[str] = Field(None, description="Bid submission start date")
-    bidSubmissionEndDate: str = Field(..., description="Bid submission end date")
-    paymentInstruments: Optional[List[str]] = Field(None, description="Accepted payment instruments")
+    data: Optional[Dict[str, Any]] = {}

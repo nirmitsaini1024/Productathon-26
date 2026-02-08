@@ -163,7 +163,7 @@ Analyze the provided tender data and generate a complete AIGeneratedLeadData dos
 Ensure all numeric scores are within valid ranges (0-100) and all required fields are populated.
 
 ## INPUT TENDER DATA:
-{tender_data}
+{input}
 
 ## OUTPUT FORMAT:
 {output_format}

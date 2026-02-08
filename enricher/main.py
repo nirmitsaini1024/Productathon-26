@@ -1,11 +1,11 @@
 import json
 from datetime import datetime
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai.chat_models import ChatOpenAI
-from dotenv import load_dotenv
 from langfuse.langchain import CallbackHandler
 
 from models import AIGeneratedLeadData, RequestBody
@@ -30,11 +30,11 @@ async def enrich_tender(request: RequestBody):
     Takes tender input and generates lead scoring, product recommendations,
     signals, next actions, and sales routing.
     """
-    tender_dict = request.model_dump(exclude_none=True)
-    tender_json = json.dumps(tender_dict, indent=2, ensure_ascii=False)
+    data_dict = request.model_dump(exclude_none=True)
+    data_json = json.dumps(data_dict, indent=2, ensure_ascii=False)
 
-    result = chain.invoke(
-        {"tender_data": tender_json, "output_format": parser.get_format_instructions()},
+    result = await chain.ainvoke(
+        {"input": data_json, "output_format": parser.get_format_instructions()},
         config={
             "callbacks": callback_handler,
             "metadata": {
