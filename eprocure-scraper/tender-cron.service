@@ -1,0 +1,28 @@
+[Unit]
+Description=Tender Scraper Cron Job - Automated tender notifications
+After=network.target
+Documentation=file:///home/burger/random/esummit/eprocure-scraper/CRON_README.md
+
+[Service]
+Type=simple
+User=burger
+WorkingDirectory=/home/burger/random/esummit/eprocure-scraper
+ExecStart=/usr/bin/node /home/burger/random/esummit/eprocure-scraper/src/cron.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tender-cron
+
+# Environment file (optional - if you prefer to keep env vars in a separate file)
+# EnvironmentFile=/home/burger/random/esummit/eprocure-scraper/.env
+
+# Security settings (optional but recommended)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/burger/random/esummit/eprocure-scraper
+
+[Install]
+WantedBy=multi-user.target

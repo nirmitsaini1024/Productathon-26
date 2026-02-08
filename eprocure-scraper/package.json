@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node src/index.js",
     "api": "node src/server.js",
-    "rss": "node src/rss-index.js"
+    "rss": "node src/rss-index.js",
+    "cron": "node src/cron.js",
+    "test-notifications": "node src/test-notifications.js",
+    "add-officers": "node add-officers.js"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +22,7 @@
     "dotenv": "^17.2.4",
     "express": "^5.1.0",
     "mongoose": "^8.19.1",
+    "node-cron": "^4.2.1",
     "p-limit": "^7.3.0",
     "qs": "^6.14.1",
     "resend": "^6.1.0"
