@@ -379,6 +379,9 @@ export default function Home() {
             <Button asChild variant="outline" className="border-border bg-transparent">
               <Link href="/officer-onboarding">Officer Onboarding</Link>
             </Button>
+            <Button asChild variant="outline" className="border-border bg-transparent">
+              <Link href="/product-ontology">Products</Link>
+            </Button>
             <Button
               variant="ghost"
               size="icon"
