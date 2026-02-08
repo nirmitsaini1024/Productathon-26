@@ -1,6 +1,4 @@
-# 🚀 HPCL Sales Intelligence Platform
-
-**Team:** 10xdevs
+# 🚀 HPCL Sales Intelligence Platform: Team- 10xdevs
 
 > AI-powered tender discovery and lead management system for B2B sales teams
 
