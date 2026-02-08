@@ -471,6 +471,271 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
         </CardContent>
       </Card>
 
+      {/* Tender Details */}
+      {(lead as any).reference && (
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <CardTitle className="text-lg">Tender Details</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Basic Info */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Reference Number</p>
+                <p className="text-sm font-semibold text-foreground">{(lead as any).reference || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Tender ID</p>
+                <p className="text-sm font-semibold text-foreground">{(lead as any).tenderId || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Contract Type</p>
+                <Badge variant="outline" className="text-xs">
+                  {(lead as any).contractType || 'N/A'}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Form of Contract</p>
+                <Badge variant="outline" className="text-xs">
+                  {(lead as any).formOfContract || 'N/A'}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Tender Category</p>
+                <p className="text-sm font-semibold text-foreground">{(lead as any).tenderCategory || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Tender Type</p>
+                <p className="text-sm font-semibold text-foreground">{(lead as any).tenderType || 'N/A'}</p>
+              </div>
+            </div>
+
+            {/* Dates */}
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold text-foreground mb-3">Important Dates</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Published Date</p>
+                  <p className="text-sm text-foreground">{(lead as any).publishedDateFull || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Document Download</p>
+                  <p className="text-sm text-foreground">
+                    {(lead as any).docDownloadStartDate && (lead as any).docDownloadEndDate
+                      ? `${(lead as any).docDownloadStartDate} to ${(lead as any).docDownloadEndDate}`
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Bid Submission Period</p>
+                  <p className="text-sm text-foreground">
+                    {(lead as any).bidSubmissionStartDate && (lead as any).bidSubmissionEndDate
+                      ? `${(lead as any).bidSubmissionStartDate} to ${(lead as any).bidSubmissionEndDate}`
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Bid Opening Date</p>
+                  <p className="text-sm text-foreground">{(lead as any).bidOpeningDateFull || (lead as any).openingDate || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Closing Date</p>
+                  <p className="text-sm font-semibold text-red-600">{(lead as any).closingDate || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Clarification Period</p>
+                  <p className="text-sm text-foreground">
+                    {(lead as any).clarificationStartDate && (lead as any).clarificationEndDate
+                      ? `${(lead as any).clarificationStartDate} to ${(lead as any).clarificationEndDate}`
+                      : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Financial Details */}
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold text-foreground mb-3">Financial Details</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">EMD Amount</p>
+                  <p className="text-sm font-semibold text-foreground">₹ {(lead as any).emdAmount || '0.00'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Tender Fee</p>
+                  <p className="text-sm font-semibold text-foreground">₹ {(lead as any).tenderFee || '0.00'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">EMD Fee Type</p>
+                  <Badge variant="outline" className="text-xs">
+                    {(lead as any).emdFeeType || 'N/A'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">EMD Exemption Allowed</p>
+                  <Badge variant={((lead as any).emdExemptionAllowed === 'Yes') ? 'default' : 'outline'} className="text-xs">
+                    {(lead as any).emdExemptionAllowed || 'N/A'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Payment Mode</p>
+                  <p className="text-sm text-foreground">{(lead as any).paymentMode || 'N/A'}</p>
+                </div>
+                {(lead as any).paymentInstruments && (lead as any).paymentInstruments.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Payment Instruments</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {(lead as any).paymentInstruments.map((instrument: string, idx: number) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {instrument}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Work Details */}
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold text-foreground mb-3">Work Details</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Work Location</p>
+                  <p className="text-sm text-foreground">{(lead as any).workLocation || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Period of Work</p>
+                  <p className="text-sm text-foreground">{(lead as any).periodOfWorkDays ? `${(lead as any).periodOfWorkDays} days` : 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Bid Validity</p>
+                  <p className="text-sm text-foreground">{(lead as any).bidValidityDays ? `${(lead as any).bidValidityDays} days` : 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Number of Covers</p>
+                  <p className="text-sm text-foreground">{(lead as any).numberOfCovers || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Product Category</p>
+                  <p className="text-sm text-foreground">{(lead as any).productCategory || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Bid Opening Place</p>
+                  <p className="text-sm text-foreground">{(lead as any).bidOpeningPlace || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Info */}
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-semibold text-foreground mb-3">Additional Information</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Two Stage Bidding</p>
+                  <Badge variant={((lead as any).allowTwoStageBidding === 'Yes') ? 'default' : 'outline'} className="text-xs">
+                    {(lead as any).allowTwoStageBidding || 'N/A'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Preferential Bidder</p>
+                  <Badge variant={((lead as any).allowPreferentialBidder === 'Yes') ? 'default' : 'outline'} className="text-xs">
+                    {(lead as any).allowPreferentialBidder || 'N/A'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Withdrawal Allowed</p>
+                  <Badge variant={((lead as any).withdrawalAllowed === 'Yes') ? 'default' : 'outline'} className="text-xs">
+                    {(lead as any).withdrawalAllowed || 'N/A'}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Tender Fee Exemption</p>
+                  <Badge variant={((lead as any).tenderFeeExemptionAllowed === 'Yes') ? 'default' : 'outline'} className="text-xs">
+                    {(lead as any).tenderFeeExemptionAllowed || 'N/A'}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Documents */}
+            {((lead as any).nitDocuments?.length > 0 || (lead as any).workItemDocuments?.length > 0) && (
+              <div className="border-t border-border pt-4">
+                <p className="text-xs font-semibold text-foreground mb-3">Documents</p>
+                
+                {(lead as any).nitDocuments?.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-muted-foreground font-medium mb-2">NIT Documents</p>
+                    <div className="space-y-2">
+                      {(lead as any).nitDocuments.map((doc: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-2 border border-border rounded-lg">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">{doc.name}</p>
+                            <p className="text-xs text-muted-foreground">{doc.description} • {doc.sizeKB} KB</p>
+                          </div>
+                          <a
+                            href={doc.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-accent hover:underline ml-2"
+                          >
+                            Download
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(lead as any).workItemDocuments?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-2">Work Item Documents</p>
+                    <div className="space-y-2">
+                      {(lead as any).workItemDocuments.map((doc: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-2 border border-border rounded-lg">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">{doc.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {doc.type} • {doc.description} • {doc.sizeKB} KB
+                            </p>
+                          </div>
+                          <a
+                            href={doc.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-accent hover:underline ml-2"
+                          >
+                            Download
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* View Full Tender Link */}
+            {(lead as any).detailUrl && (
+              <div className="border-t border-border pt-4">
+                <a
+                  href={(lead as any).detailUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-accent hover:underline"
+                >
+                  View Full Tender Details on eProcure
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* B. Why This Lead Exists */}
       <Card className="border-border">
         <CardHeader className="pb-3">

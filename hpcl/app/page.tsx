@@ -377,6 +377,9 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" className="border-border bg-transparent">
+              <Link href="/officer-dashboard">Officer View</Link>
+            </Button>
+            <Button asChild variant="outline" className="border-border bg-transparent">
               <Link href="/officer-onboarding">Officer Onboarding</Link>
             </Button>
             <Button asChild variant="outline" className="border-border bg-transparent">
