@@ -25,14 +25,18 @@ import {
   Target,
   FileText,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+type Officer = {
+  _id?: string
+  name: string
+  email: string
+}
 
 interface Lead {
   id: string
@@ -55,6 +59,7 @@ interface Lead {
     date: string
     trust_score: number
     summary: string
+    details?: unknown
   }>
   products_recommended: Array<{
     product_name: string
@@ -62,12 +67,15 @@ interface Lead {
     reason_code: string
     estimated_volume: string
     margin_potential: string
+    competitor_risk?: string
+    match_evidence?: string[]
   }>
   next_actions: {
     suggested_action: string
     timing: string
     context: string
     contact_trigger: string
+    reference_number?: string
   }
   sales_owner: string
   field_officer: string
@@ -75,6 +83,27 @@ interface Lead {
   notes: string
   created_at: string
 }
+
+type EnrichedDossier = {
+  lead_score: number
+  urgency: 'High' | 'Medium' | 'Low' | string
+  confidence: number
+  signals?: Lead['signals']
+  products_recommended?: Lead['products_recommended']
+  next_actions?: Partial<Lead['next_actions']> & Record<string, unknown>
+  sales_owner?: string
+  field_officer?: string
+  region?: string
+  created_at?: string
+  source?: string
+  tender_reference?: string
+  procurement_channel?: string
+}
+
+// Module-level cache to prevent duplicate enrichment requests in React Strict Mode (dev),
+// and to avoid refetching when navigating back/forth to the same dossier.
+const ENRICH_CACHE = new Map<string, EnrichedDossier>()
+const ENRICH_INFLIGHT = new Map<string, Promise<EnrichedDossier>>()
 
 interface LeadDossierProps {
   lead: Lead
@@ -91,6 +120,13 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
   const [emailMessage, setEmailMessage] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailResult, setEmailResult] = useState<string | null>(null)
+  const [officers, setOfficers] = useState<Officer[]>([])
+  const [officersLoading, setOfficersLoading] = useState(false)
+  const [officersError, setOfficersError] = useState<string | null>(null)
+
+  const [enriched, setEnriched] = useState<EnrichedDossier | null>(null)
+  const [enrichLoading, setEnrichLoading] = useState(false)
+  const [enrichError, setEnrichError] = useState<string | null>(null)
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -105,6 +141,26 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
     setEmailResult(null)
     try {
       const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '')
+      const payloadLead: Lead =
+        enriched
+          ? ({
+              ...lead,
+              lead_score: typeof enriched.lead_score === 'number' ? enriched.lead_score : lead.lead_score,
+              urgency: (enriched.urgency as Lead['urgency']) || lead.urgency,
+              confidence: typeof enriched.confidence === 'number' ? enriched.confidence : lead.confidence,
+              signals: Array.isArray(enriched.signals) ? enriched.signals : lead.signals,
+              products_recommended: Array.isArray(enriched.products_recommended)
+                ? enriched.products_recommended
+                : lead.products_recommended,
+              next_actions: (enriched.next_actions as Lead['next_actions']) || lead.next_actions,
+              sales_owner: enriched.sales_owner || lead.sales_owner,
+              field_officer: enriched.field_officer || lead.field_officer,
+              location: {
+                ...lead.location,
+                region: enriched.region || lead.location.region,
+              },
+            } as Lead)
+          : lead
       const res = await fetch(`${apiBase}/api/email/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,7 +168,7 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           to: emailTo,
           subject: `HPCL Opportunity: ${lead.company_name}`,
           message: emailMessage,
-          lead,
+          lead: payloadLead,
         }),
       })
       const json = await res.json()
@@ -127,11 +183,121 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
     }
   }
 
-  const urgencyColor = {
-    High: 'bg-destructive text-destructive-foreground',
-    Medium: 'bg-yellow-100 text-yellow-800',
-    Low: 'bg-green-100 text-green-800',
-  }[lead.urgency]
+  const loadOfficers = async () => {
+    setOfficersLoading(true)
+    setOfficersError(null)
+    try {
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '')
+      const res = await fetch(`${apiBase}/api/officers`)
+      const json = await res.json()
+      if (!res.ok || !json?.ok) throw new Error(json?.error || `Failed: ${res.status}`)
+      const items = Array.isArray(json?.items) ? (json.items as Officer[]) : []
+      setOfficers(items)
+    } catch (err) {
+      setOfficersError(err instanceof Error ? err.message : String(err))
+      setOfficers([])
+    } finally {
+      setOfficersLoading(false)
+    }
+  }
+
+  const handleStatusChangeValue = (value: string) => {
+    // `Select` emits string, but our allowed values are constrained by the SelectItem values below.
+    setStatus(value as Lead['status'])
+  }
+
+  useEffect(() => {
+    if (emailOpen) loadOfficers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emailOpen])
+
+  const loadEnrichment = async (leadId: string) => {
+    setEnrichLoading(true)
+    setEnrichError(null)
+    try {
+      const cached = ENRICH_CACHE.get(leadId)
+      if (cached) {
+        setEnriched(cached)
+        return
+      }
+
+      const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '')
+      const existing = ENRICH_INFLIGHT.get(leadId)
+      const p =
+        existing ||
+        (async () => {
+          const res = await fetch(`${apiBase}/api/enrich`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lead_id: leadId, lead }),
+          })
+          const json = await res.json()
+          if (!res.ok || json?.ok === false) {
+            throw new Error(json?.error || `Enrichment failed (${res.status})`)
+          }
+          return json as EnrichedDossier
+        })()
+
+      if (!existing) ENRICH_INFLIGHT.set(leadId, p)
+
+      const out = await p
+      ENRICH_CACHE.set(leadId, out)
+      setEnriched(out)
+    } catch (err) {
+      setEnrichError(err instanceof Error ? err.message : String(err))
+    } finally {
+      ENRICH_INFLIGHT.delete(leadId)
+      setEnrichLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    setStatus(lead.status)
+    setNotes(lead.notes)
+    if (lead?.id) loadEnrichment(lead.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id])
+
+  const display: Lead = enriched
+    ? ({
+        ...lead,
+        lead_score: typeof enriched.lead_score === 'number' ? enriched.lead_score : lead.lead_score,
+        // urgency should come from enrichment only (UI will show placeholder while loading)
+        urgency: lead.urgency,
+        confidence: typeof enriched.confidence === 'number' ? enriched.confidence : lead.confidence,
+        signals: Array.isArray(enriched.signals) ? enriched.signals : lead.signals,
+        products_recommended: Array.isArray(enriched.products_recommended)
+          ? enriched.products_recommended
+          : lead.products_recommended,
+        next_actions: (enriched.next_actions as Lead['next_actions']) || lead.next_actions,
+        sales_owner: enriched.sales_owner || lead.sales_owner,
+        field_officer: enriched.field_officer || lead.field_officer,
+        location: {
+          ...lead.location,
+          region: enriched.region || lead.location.region,
+        },
+        created_at: enriched.created_at || lead.created_at,
+      } as Lead)
+    : lead
+
+  const whySignals = Array.isArray(enriched?.signals) ? enriched!.signals! : []
+  const recommendedProducts = Array.isArray(enriched?.products_recommended) ? enriched!.products_recommended! : []
+  const nextActions =
+    enriched && enriched.next_actions && typeof enriched.next_actions === 'object'
+      ? (enriched.next_actions as Partial<Lead['next_actions']> & Record<string, unknown>)
+      : null
+
+  const urgencyLabel =
+    enrichLoading && !enriched ? '…' : enriched?.urgency ? String(enriched.urgency) : '—'
+
+  const urgencyColor =
+    urgencyLabel === 'High'
+      ? 'bg-destructive text-destructive-foreground'
+      : urgencyLabel === 'Medium'
+        ? 'bg-yellow-100 text-yellow-800'
+        : urgencyLabel === 'Low'
+          ? 'bg-green-100 text-green-800'
+          : 'bg-muted text-muted-foreground'
 
   const marginColor = {
     'High': 'text-green-700 bg-green-50',
@@ -154,35 +320,61 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            {lead.company_name}
+            {display.company_name}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {lead.industry} • {lead.location.city}, {lead.location.state}
+            {display.industry} • {display.location.city}, {display.location.state}
           </p>
         </div>
-        <Badge className={urgencyColor}>{lead.urgency}</Badge>
+        <Badge className={urgencyColor}>{urgencyLabel}</Badge>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card border border-border rounded-lg p-3">
           <p className="text-xs text-muted-foreground font-medium mb-1">Lead Score</p>
-          <p className="text-xl font-bold text-foreground">{lead.lead_score}%</p>
+          <p className="text-xl font-bold text-foreground">
+            {enrichLoading ? '…' : `${display.lead_score}%`}
+          </p>
         </div>
         <div className="bg-card border border-border rounded-lg p-3">
           <p className="text-xs text-muted-foreground font-medium mb-1">Confidence</p>
-          <p className="text-xl font-bold text-accent">{lead.confidence}%</p>
+          <p className="text-xl font-bold text-accent">
+            {enrichLoading ? '…' : `${display.confidence}%`}
+          </p>
         </div>
         <div className="bg-card border border-border rounded-lg p-3">
           <p className="text-xs text-muted-foreground font-medium mb-1">Region</p>
-          <p className="text-sm font-bold text-foreground">{lead.location.region}</p>
+          <p className="text-sm font-bold text-foreground">
+            {enrichLoading ? '…' : display.location.region}
+          </p>
         </div>
         <div className="bg-card border border-border rounded-lg p-3">
           <p className="text-xs text-muted-foreground font-medium mb-1">Size</p>
           <p className="text-xs font-semibold text-foreground line-clamp-2">
-            {lead.company_size}
+            {display.company_size}
           </p>
         </div>
       </div>
+
+      {(enrichError || enrichLoading) && (
+        <Card className="border-border">
+          <CardContent className="py-4 space-y-2">
+            {enrichLoading && (
+              <p className="text-sm text-muted-foreground">
+                Generating dossier insights…
+              </p>
+            )}
+            {enrichError && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-destructive break-words">Enrichment failed: {enrichError}</p>
+                <Button variant="outline" onClick={() => loadEnrichment(lead.id)} disabled={enrichLoading}>
+                  Retry
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* A. Company Snapshot */}
       <Card className="border-border">
@@ -196,25 +388,25 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-muted-foreground font-medium mb-1">Company Name</p>
-              <p className="text-sm font-semibold text-foreground">{lead.company_name}</p>
+              <p className="text-sm font-semibold text-foreground">{display.company_name}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-medium mb-1">Industry</p>
-              <p className="text-sm font-semibold text-foreground">{lead.industry}</p>
+              <p className="text-sm font-semibold text-foreground">{display.industry}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-medium mb-1">Company Size</p>
-              <p className="text-sm font-semibold text-foreground">{lead.company_size}</p>
+              <p className="text-sm font-semibold text-foreground">{display.company_size}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-medium mb-1">Location</p>
               <p className="text-sm font-semibold text-foreground">
-                {lead.location.city}, {lead.location.state}
+                {display.location.city}, {display.location.state}
               </p>
             </div>
           </div>
           <a
-            href={lead.website}
+            href={display.website}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-sm font-medium text-accent hover:underline"
@@ -237,36 +429,42 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {lead.signals.map((signal, idx) => (
-            <div key={idx} className="border-l-2 border-accent pl-4 py-2">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {signal.type}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(signal.date).toLocaleDateString()}
+          {enrichLoading && !enriched ? (
+            <p className="text-sm text-muted-foreground">Generating signals…</p>
+          ) : whySignals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No signals returned by enrichment yet.</p>
+          ) : (
+            whySignals.map((signal, idx) => (
+              <div key={idx} className="border-l-2 border-accent pl-4 py-2">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {signal.type}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(signal.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-accent">
+                    {signal.trust_score}% trust
                   </span>
                 </div>
-                <span className="text-xs font-semibold text-accent">
-                  {signal.trust_score}% trust
-                </span>
+                <p className="text-sm font-semibold text-foreground mb-1">
+                  {signal.keyword}
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">{signal.summary}</p>
+                <a
+                  href={signal.source}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent hover:underline inline-flex items-center gap-1"
+                >
+                  View source
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
-              <p className="text-sm font-semibold text-foreground mb-1">
-                {signal.keyword}
-              </p>
-              <p className="text-sm text-muted-foreground mb-2">{signal.summary}</p>
-              <a
-                href={signal.source}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-accent hover:underline inline-flex items-center gap-1"
-              >
-                View source
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -282,31 +480,37 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {lead.products_recommended.map((product, idx) => (
-            <div key={idx} className="bg-muted/40 border border-border rounded-lg p-3 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <h4 className="font-semibold text-foreground text-sm">
-                    {idx + 1}. {product.product_name}
-                  </h4>
+          {enrichLoading && !enriched ? (
+            <p className="text-sm text-muted-foreground">Generating product recommendations…</p>
+          ) : recommendedProducts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No product recommendations returned by enrichment yet.</p>
+          ) : (
+            recommendedProducts.map((product, idx) => (
+              <div key={idx} className="bg-muted/40 border border-border rounded-lg p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground text-sm">
+                      {idx + 1}. {product.product_name}
+                    </h4>
+                  </div>
+                  <Badge variant="outline" className="text-xs flex-shrink-0">
+                    {product.confidence}%
+                  </Badge>
                 </div>
-                <Badge variant="outline" className="text-xs flex-shrink-0">
-                  {product.confidence}%
-                </Badge>
+                <p className="text-sm text-muted-foreground">{product.reason_code}</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-card rounded p-2">
+                    <p className="text-muted-foreground mb-0.5">Est. Volume</p>
+                    <p className="font-semibold text-foreground">{product.estimated_volume}</p>
+                  </div>
+                  <div className={`rounded p-2 ${marginColor[product.margin_potential] || ''}`}>
+                    <p className="mb-0.5 font-medium opacity-75">Margin</p>
+                    <p className="font-semibold">{product.margin_potential}</p>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">{product.reason_code}</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-card rounded p-2">
-                  <p className="text-muted-foreground mb-0.5">Est. Volume</p>
-                  <p className="font-semibold text-foreground">{product.estimated_volume}</p>
-                </div>
-                <div className={`rounded p-2 ${marginColor[product.margin_potential] || ''}`}>
-                  <p className="mb-0.5 font-medium opacity-75">Margin</p>
-                  <p className="font-semibold">{product.margin_potential}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -319,24 +523,40 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="bg-card border border-primary/20 rounded p-3">
-              <p className="text-xs text-muted-foreground font-medium mb-1">Action</p>
-              <p className="text-sm font-bold text-foreground">
-                {lead.next_actions.suggested_action}
-              </p>
-            </div>
-            <div className="bg-card border border-primary/20 rounded p-3">
-              <p className="text-xs text-muted-foreground font-medium mb-1">Timing</p>
-              <p className="text-sm font-bold text-destructive">
-                {lead.next_actions.timing}
-              </p>
-            </div>
-          </div>
-          <div className="bg-card border border-primary/20 rounded p-3">
-            <p className="text-xs text-muted-foreground font-medium mb-1">Context</p>
-            <p className="text-sm text-foreground">{lead.next_actions.context}</p>
-          </div>
+          {enrichLoading && !enriched ? (
+            <p className="text-sm text-muted-foreground">Generating next action…</p>
+          ) : !nextActions ? (
+            <p className="text-sm text-muted-foreground">No next action returned by enrichment yet.</p>
+          ) : (
+            <>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="bg-card border border-primary/20 rounded p-3">
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Action</p>
+                  <p className="text-sm font-bold text-foreground">
+                    {String(nextActions.suggested_action ?? '—')}
+                  </p>
+                </div>
+                <div className="bg-card border border-primary/20 rounded p-3">
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Timing</p>
+                  <p className="text-sm font-bold text-destructive">
+                    {String(nextActions.timing ?? '—')}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-card border border-primary/20 rounded p-3 space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Context</p>
+                  <p className="text-sm text-foreground">{String(nextActions.context ?? '—')}</p>
+                </div>
+                {nextActions.contact_trigger ? (
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Contact Trigger</p>
+                    <p className="text-sm text-foreground">{String(nextActions.contact_trigger)}</p>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -374,11 +594,28 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           <div className="space-y-3">
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">To</label>
-              <Input
-                value={emailTo}
-                onChange={(e) => setEmailTo(e.target.value)}
-                placeholder="customer@example.com"
-              />
+              <Select value={emailTo} onValueChange={setEmailTo}>
+                <SelectTrigger className="w-full h-10 border-border bg-card text-foreground">
+                  <SelectValue placeholder={officersLoading ? 'Loading officers…' : 'Select officer email'} />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  {officers.map((o) => (
+                    <SelectItem key={o._id || o.email} value={o.email}>
+                      {o.name} — {o.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {officersError && (
+                <p className="text-xs text-muted-foreground mt-2 break-words">
+                  Failed to load officers: {officersError}
+                </p>
+              )}
+              {!officersLoading && !officersError && officers.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  No officers found. Please onboard officers first.
+                </p>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">Message</label>
@@ -421,7 +658,7 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
             <label className="text-sm font-medium text-foreground mb-2 block">
               Lead Status
             </label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={handleStatusChangeValue}>
               <SelectTrigger className="w-full h-10 border-border bg-card text-foreground">
                 <SelectValue />
               </SelectTrigger>
@@ -449,11 +686,11 @@ export function LeadDossier({ lead, onBack, onStatusChange }: LeadDossierProps) 
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
             <div className="text-xs">
               <p className="text-muted-foreground">Sales Owner</p>
-              <p className="font-semibold text-foreground">{lead.sales_owner}</p>
+              <p className="font-semibold text-foreground">{display.sales_owner}</p>
             </div>
             <div className="text-xs">
               <p className="text-muted-foreground">Field Officer</p>
-              <p className="font-semibold text-foreground">{lead.field_officer}</p>
+              <p className="font-semibold text-foreground">{display.field_officer}</p>
             </div>
           </div>
 

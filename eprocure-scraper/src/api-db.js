@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 let _connectPromise = null;
 let _tenderModel = null;
 let _t247TenderModel = null;
+let _officerModel = null;
 
 async function connect() {
   if (mongoose.connection?.readyState === 1) return mongoose;
@@ -112,9 +113,48 @@ export async function getT247TenderModel() {
   return _t247TenderModel;
 }
 
+/**
+ * Officers onboarded in the HPCL UI.
+ * Default: officers
+ */
+export async function getOfficerModel() {
+  if (_officerModel) return _officerModel;
+  await connect();
+
+  const collectionName = process.env.OFFICERS_MONGO_COLLECTION || "officers";
+  const modelName = `Officer__${collectionName.replace(/[^a-zA-Z0-9_]/g, "_")}`;
+
+  if (mongoose.models[modelName]) {
+    _officerModel = mongoose.models[modelName];
+    return _officerModel;
+  }
+
+  const { Schema } = mongoose;
+  const schema = new Schema(
+    {
+      name: { type: String, required: true },
+      email: { type: String, required: true },
+      phone: { type: String, default: null },
+      employee_id: { type: String, default: null },
+      designation: { type: String, default: null },
+      region: { type: String, default: null },
+      createdAt: { type: Date, default: Date.now },
+      updatedAt: { type: Date, default: Date.now },
+    },
+    { strict: true, minimize: true }
+  );
+
+  schema.index({ email: 1 }, { unique: true, name: "uniq_email" });
+  schema.index({ createdAt: -1 }, { name: "createdAt_desc" });
+
+  _officerModel = mongoose.model(modelName, schema, collectionName);
+  return _officerModel;
+}
+
 export async function closeDb() {
   _tenderModel = null;
   _t247TenderModel = null;
+  _officerModel = null;
   _connectPromise = null;
   if (mongoose.connection?.readyState) {
     await mongoose.disconnect();

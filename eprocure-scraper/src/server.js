@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import cors from "cors";
 import express from "express";
-import { getT247TenderModel, getTenderModel } from "./api-db.js";
+import { getOfficerModel, getT247TenderModel, getTenderModel } from "./api-db.js";
 import { extractStateNameFromSiteLocation, lookupStateByName, STATES } from "./state-map.js";
 import { searchTender247 } from "./t247-client.js";
 import { KEYWORDS } from "./keywords.js";
@@ -172,6 +172,27 @@ function computeMetricsFromLeads(leads) {
   };
 }
 
+function stripLargeTenderFields(t) {
+  if (!t || typeof t !== "object") return t;
+  const out = { ...t };
+  // Avoid sending extremely heavy fields to the enrich service (keeps latency reasonable).
+  const drop = [
+    "html",
+    "rawHtml",
+    "pageHtml",
+    "documents",
+    "attachments",
+    "files",
+    "downloadedFiles",
+    "pdfText",
+    "rawResponse",
+  ];
+  for (const k of drop) {
+    if (k in out) delete out[k];
+  }
+  return out;
+}
+
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 
@@ -200,6 +221,93 @@ app.get("/api/leads", async (req, res) => {
     res.json({ leads, dashboard_metrics });
   } catch (err) {
     res.status(500).json({ error: err?.message ?? String(err) });
+  }
+});
+
+app.post("/api/enrich", async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== "object") {
+      return res.status(400).json({ ok: false, error: "Missing JSON body" });
+    }
+
+    const leadId = String(body.lead_id ?? body.leadId ?? body.id ?? "").trim();
+    const lead = body.lead && typeof body.lead === "object" ? body.lead : null;
+
+    const enrichUrl = String(
+      process.env.ENRICH_URL || "https://3wjb2fsn-8000.inc1.devtunnels.ms/enrich"
+    ).trim();
+    if (!enrichUrl) return res.status(500).json({ ok: false, error: "ENRICH_URL is not configured" });
+
+    // Try to load the full tender doc so we can "pass all the data" for enrichment.
+    /** @type {any} */
+    let tender = null;
+    if (leadId) {
+      const Tender = await getTenderModel();
+      if (/^[0-9a-fA-F]{24}$/.test(leadId)) {
+        try {
+          tender = await Tender.findById(leadId).lean();
+        } catch {
+          // ignore
+        }
+      }
+      if (!tender) {
+        tender = await Tender.findOne({ key: leadId }).lean();
+      }
+    }
+
+    tender = stripLargeTenderFields(tender);
+
+    const data = {
+      lead_id: leadId || null,
+      lead,
+      computed_lead: tender ? toLead(tender) : lead,
+      tender,
+    };
+
+    const ac = new AbortController();
+    const timeoutMs = clamp(Number(process.env.ENRICH_TIMEOUT_MS ?? 60_000), 1000, 300_000);
+    const t = setTimeout(() => ac.abort(), timeoutMs);
+
+    let resp;
+    try {
+      resp = await fetch(enrichUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+        signal: ac.signal,
+      });
+    } finally {
+      clearTimeout(t);
+    }
+
+    const text = await resp.text();
+    let json;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      return res.status(502).json({
+        ok: false,
+        error: `Enricher returned non-JSON (status ${resp.status})`,
+        raw: text?.slice?.(0, 2000) ?? "",
+      });
+    }
+
+    if (!resp.ok) {
+      return res.status(502).json({
+        ok: false,
+        error: `Enricher error (status ${resp.status})`,
+        enrich: json,
+      });
+    }
+
+    return res.json(json);
+  } catch (err) {
+    const msg =
+      err?.name === "AbortError"
+        ? `Enricher timed out (${clamp(Number(process.env.ENRICH_TIMEOUT_MS ?? 60_000), 1000, 300_000)}ms)`
+        : err?.message ?? String(err);
+    return res.status(500).json({ ok: false, error: msg });
   }
 });
 
@@ -686,6 +794,72 @@ app.post("/api/email/send", async (req, res) => {
     const ts = new Date().toISOString();
     const to = req?.body?.to;
     console.error(`[email] failed ts=${ts} to=${String(to ?? "")} error=${err?.message ?? String(err)}`);
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.get("/api/officers", async (_req, res) => {
+  try {
+    const Officer = await getOfficerModel();
+    const items = await Officer.find({}).sort({ createdAt: -1 }).limit(500).lean();
+    return res.json({ ok: true, items });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.post("/api/officers", async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== "object") {
+      return res.status(400).json({ ok: false, error: "Missing JSON body" });
+    }
+
+    const name = String(body.name ?? "").trim();
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const phone = body.phone != null ? String(body.phone).trim() : null;
+    const employee_id = body.employee_id != null ? String(body.employee_id).trim() : null;
+    const designation = body.designation != null ? String(body.designation).trim() : null;
+    const region = body.region != null ? String(body.region).trim() : null;
+
+    if (!name) return res.status(400).json({ ok: false, error: "name is required" });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ ok: false, error: "valid email is required" });
+    }
+
+    const Officer = await getOfficerModel();
+    const now = new Date();
+
+    const doc = await Officer.findOneAndUpdate(
+      { email },
+      {
+        $setOnInsert: { createdAt: now },
+        $set: { name, email, phone, employee_id, designation, region, updatedAt: now },
+      },
+      { upsert: true, new: true }
+    ).lean();
+
+    return res.json({ ok: true, item: doc });
+  } catch (err) {
+    // Handle duplicate email race
+    if (String(err?.code) === "11000") {
+      return res.status(409).json({ ok: false, error: "Officer with this email already exists" });
+    }
+    return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
+  }
+});
+
+app.delete("/api/officers/:id", async (req, res) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    if (!id) return res.status(400).json({ ok: false, error: "id is required" });
+
+    const Officer = await getOfficerModel();
+    const deleted = await Officer.findByIdAndDelete(id).lean();
+    if (!deleted) return res.status(404).json({ ok: false, error: "Officer not found" });
+
+    return res.json({ ok: true, deleted });
+  } catch (err) {
     return res.status(500).json({ ok: false, error: err?.message ?? String(err) });
   }
 });

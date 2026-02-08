@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { LeadCard } from '@/components/lead-card'
 import { LeadDossier } from '@/components/lead-dossier'
 import { ExecutiveDashboard } from '@/components/executive-dashboard'
@@ -230,6 +231,9 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
+              <Button asChild variant="outline" className="border-border bg-transparent">
+                <Link href="/officer-onboarding">Officer Onboarding</Link>
+              </Button>
               <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground">
                 <Bell className="w-5 h-5" />
               </Button>
@@ -268,6 +272,9 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline" className="border-border bg-transparent">
+              <Link href="/officer-onboarding">Officer Onboarding</Link>
+            </Button>
             <Button
               variant="ghost"
               size="icon"
